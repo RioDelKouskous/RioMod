@@ -1,12 +1,11 @@
 --- STEAMODDED HEADER
 --- MOD_NAME: RIOMOD
 --- MOD_ID: RIOMOD
---- MOD_AUTHOR: [elial1]
+--- MOD_AUTHOR: [RioSkai]
 --- MOD_DESCRIPTION: Cool mod yeah yeah.
 --- PREFIX: xmpl
 ----------------------------------------------
 ------------MOD CODE -------------------------
-
 
 SMODS.Atlas{
     key = 'Jokers',
@@ -41,8 +40,8 @@ SMODS.Joker{
       }
     },
     loc_vars = function(self,info_queue,center)
-        info_queue[#info_queue+1] = G.P_CENTERS.j_joker --adds "Joker"'s description next to this card's description
-        return {vars = {center.ability.extra.Xmult}} --#1# is replaced with card.ability.extra.Xmult
+        info_queue[#info_queue+1] = G.P_CENTERS.j_joker
+        return {vars = {center.ability.extra.Xmult}}
     end,
     check_for_unlock = function(self, args)
         if args.type == 'derek_loves_you' then
