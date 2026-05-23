@@ -24,6 +24,22 @@ return {
                     'Adds {C:mult}+#1#{} Mult.',
                     '{C:red,E:2}Self-destructs{} in {C:attention}#2#{} hands.'
                 }
+            },
+            j_xmpl_daronne_vexpi = {
+                name = "Vexpi's Mother",
+                text = {
+                    'Reduces {C:attention}Joker{} slots to {C:attention}1{}',
+                    'On each shop {C:attention}reroll{}, creates',
+                    '{C:attention}#1#{} random {C:dark_edition}Negative{} consumables',
+                    'Eats {C:attention}#2#{} consumables after each hand',
+                    'Eats {C:attention}1{} more consumable each Ante',
+                    '{C:planet}Planet{}: {C:chips}+#3#{} Chips, {C:tarot}Tarot{}: {C:mult}+#4#{} Mult',
+                    '{C:spectral}Spectral{}: {X:mult,C:white}X#5#{} Mult',
+                    'Other consumable: {X:chips,C:white}X#6#{} Chips',
+                    'Eats adjacent {C:dark_edition}Negative{} Jokers',
+                    '{C:attention}X2{} per eaten Joker {C:inactive}(X#7#, #12# eaten){}',
+                    '{C:inactive}Current: +#8# Chips, +#9# Mult, X#10# Mult, X#11# Chips{}'
+                }
             }
         },
         Tarot = {
@@ -50,7 +66,9 @@ return {
             k_xmpl_live = 'Live!',
             k_xmpl_derek_yay = 'Derek yay',
             k_xmpl_peace_kindness = 'Peace & Kindness!',
-            k_xmpl_self_destruct = 'Self-Destruct!'
+            k_xmpl_self_destruct = 'Self-Destruct!',
+            k_xmpl_daronne_reroll = 'Dinner time!',
+            k_xmpl_daronne_ate = 'Meal done!'
         }
     }
 }

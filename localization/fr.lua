@@ -24,6 +24,22 @@ return {
                     'Ajoute {C:mult}+#1#{} Multi.',
                     "{C:red,E:2}S'autodétruit{} dans {C:attention}#2#{} mains."
                 }
+            },
+            j_xmpl_daronne_vexpi = {
+                name = 'La daronne a vexpi',
+                text = {
+                    'Reduit les emplacements de {C:attention}Jokers{} a {C:attention}1{}',
+                    'A chaque {C:attention}reroll{} du shop, cree',
+                    '{C:attention}#1#{} consommables {C:dark_edition}negatifs{} aleatoires',
+                    'Mange {C:attention}#2#{} consommables apres chaque main',
+                    'Mange {C:attention}1{} consommable de plus a chaque Ante',
+                    '{C:planet}Planete{}: {C:chips}+#3#{} Jetons, {C:tarot}Tarot{}: {C:mult}+#4#{} Multi',
+                    '{C:spectral}Spectral{}: {X:mult,C:white}X#5#{} Multi',
+                    'Autre consommable: {X:chips,C:white}X#6#{} Jetons',
+                    'Mange les Jokers {C:dark_edition}negatifs{} voisins',
+                    '{C:attention}X2{} par Joker mange {C:inactive}(X#7#, #12# manges){}',
+                    '{C:inactive}Actuel: +#8# Jetons, +#9# Multi, X#10# Multi, X#11# Jetons{}'
+                }
             }
         },
         Tarot = {
@@ -50,7 +66,9 @@ return {
             k_xmpl_live = 'En vie !',
             k_xmpl_derek_yay = 'Derek, génial',
             k_xmpl_peace_kindness = 'Paix et gentillesse !',
-            k_xmpl_self_destruct = 'Autodestruction !'
+            k_xmpl_self_destruct = 'Autodestruction !',
+            k_xmpl_daronne_reroll = 'A table !',
+            k_xmpl_daronne_ate = 'Repas fini !'
         }
     }
 }
