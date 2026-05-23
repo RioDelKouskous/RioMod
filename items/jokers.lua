@@ -23,15 +23,6 @@ SMODS.Atlas{
 
 SMODS.Joker{
     key = 'derek',
-    loc_txt = {
-        name = 'Derek',
-        text = {
-          'When Blind is selected,',
-          'create a {C:attention}Joker{}',
-          '{X:mult,C:white}X#1#{} Mult',
-          'Gain {C:money}4${} at end of round'
-        },
-    },
     atlas = 'derek_atlas',
     rarity = 3,
     cost = 12,
@@ -46,7 +37,7 @@ SMODS.Joker{
     calculate = function(self, card, context)
         if context.joker_main then
             return {
-                message = 'X' .. card.ability.extra.Xmult,
+                message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.Xmult}},
                 Xmult_mod = card.ability.extra.Xmult
             }
         end
@@ -55,7 +46,7 @@ SMODS.Joker{
             new_card:add_to_deck()
             G.jokers:emplace(new_card)
             return {
-                message = 'Derek yay',
+                message = localize('k_xmpl_derek_yay'),
                 colour = G.C.BLUE
             }
         end
@@ -67,14 +58,6 @@ SMODS.Joker{
 
 SMODS.Joker{
     key = 'horse_of_peace_and_kindness',
-    loc_txt = {
-        name = 'Horse of Peace and Kindness',
-        text = { 
-            '{C:green}> Horse is at peace with himself{}',
-            '{C:green}> Horse offers you his kindness{}',
-            '{C:chips}+#1#{} Chips and {X:mult,C:white}X#2#{} Mult'
-        },
-    },
     atlas = 'horse of peace and kindness_atlas',
     rarity = 2,
     cost = 7,
@@ -91,7 +74,7 @@ SMODS.Joker{
             return {
                 chip_mod = card.ability.extra.chips,
                 Xmult_mod = card.ability.extra.Xmult,
-                message = 'Peace & Kindness!',
+                message = localize('k_xmpl_peace_kindness'),
                 colour = G.C.RED
             }
         end
@@ -100,13 +83,6 @@ SMODS.Joker{
 
 SMODS.Joker{
     key = 'dolby',
-    loc_txt = {
-        name = 'Dolby',
-        text = {
-            'Adds {C:mult}+#1#{} Mult.',
-            '{C:red,E:2}Self-destructs{} in {C:attention}#2#{} hands.'
-        },
-    },
     atlas = 'dolby_atlas',
     rarity = 1,
     cost = 5,
@@ -122,7 +98,7 @@ SMODS.Joker{
     calculate = function(self, card, context)
         if context.joker_main then
             return {
-                message = '+' .. card.ability.extra.mult .. ' Mult',
+                message = localize{type = 'variable', key = 'a_mult', vars = {card.ability.extra.mult}},
                 mult_mod = card.ability.extra.mult
             }
         end
@@ -130,7 +106,7 @@ SMODS.Joker{
             if card.ability.extra.hands_left - 1 <= 0 then
                 SMODS.destroy_cards(card, nil, nil, true)
                 return {
-                    message = 'Self-Destruct!',
+                    message = localize('k_xmpl_self_destruct'),
                     colour = G.C.RED
                 }
             else

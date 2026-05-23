@@ -28,10 +28,6 @@ end
 
 SMODS.Tarot{
     key = 'rio_guy',
-    loc_txt = {
-        name = 'The guy',
-        text = { 'Create {C:attention}2{} random', '{C:tarot}Tarot{} cards' }
-    },
     atlas = 'rio_assets',
     pos = {x = 0, y = 0},
     cost = 3,
@@ -45,7 +41,7 @@ SMODS.Tarot{
                 G.consumeables:emplace(new_card)
             end
             return {
-                message = 'Live!',
+                message = localize('k_xmpl_live'),
                 colour = G.C.PURPLE
             }
         end
@@ -65,10 +61,6 @@ SMODS.Booster{
     weight = 2, -- How often it appears
     unlocked = true,
     discovered = true,
-    loc_txt = {
-        name = 'Rio Pack',
-        text = { 'Choose {C:attention}#1#{} of', '{C:attention}#2#{} Tarot cards' }
-    },
     loc_vars = function(self, info_queue, center)
         return {vars = {center.config.choose, center.config.extra}}
     end,
