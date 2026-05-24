@@ -46,6 +46,7 @@ for _, key in ipairs(DARONNE_VEXPI_SOUND_KEYS) do
 end
 
 local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
+local HEAVIEST_DECK_KEY = 'b_xmpl_heaviest_deck'
 local DARONNE_VEXPI_WORDS = {
     'Yummy!',
     'Delicious!',
@@ -62,7 +63,49 @@ local DARONNE_VEXPI_WORDS = {
     'CHICKEN!'
 }
 
+local DARONNE_VEXPI_FEAST_LINES = {
+    'k_xmpl_daronne_feast_line_1',
+    'k_xmpl_daronne_feast_line_2',
+    'k_xmpl_daronne_feast_line_3',
+    'k_xmpl_daronne_feast_line_4',
+}
+
 local rio_daronne_apply_shop_negative
+
+-- #region agent log
+local RIO_DEBUG_LOG_PATH = 'C:/Users/Suiveurtag/AppData/Roaming/Balatro/Mods/RioMod/debug-dfab94.log'
+local function rio_debug_log(hypothesisId, location, message, data)
+    pcall(function()
+        local f = io.open(RIO_DEBUG_LOG_PATH, 'a')
+        if not f then return end
+        local ts = os.time() or 0
+        local parts = {
+            '"sessionId":"dfab94"',
+            '"hypothesisId":"' .. tostring(hypothesisId) .. '"',
+            '"location":"' .. tostring(location):gsub('"', '\\"') .. '"',
+            '"message":"' .. tostring(message):gsub('"', '\\"') .. '"',
+            '"timestamp":' .. tostring(ts * 1000),
+        }
+        if data then
+            local dp = {}
+            for k, v in pairs(data) do
+                local val
+                if type(v) == 'string' then
+                    val = '"' .. v:gsub('"', '\\"') .. '"'
+                elseif type(v) == 'boolean' then
+                    val = v and 'true' or 'false'
+                else
+                    val = tostring(v)
+                end
+                dp[#dp + 1] = '"' .. tostring(k) .. '":' .. val
+            end
+            parts[#parts + 1] = '"data":{' .. table.concat(dp, ',') .. '}'
+        end
+        f:write('{' .. table.concat(parts, ',') .. '}\n')
+        f:close()
+    end)
+end
+-- #endregion
 
 local function rio_format_num(value)
     if type(value) ~= 'number' then return value end
@@ -165,6 +208,16 @@ local function rio_daronne_apply_consumable(card, consumed)
     extra.eaten_cards = (extra.eaten_cards or 0) + 1
 end
 
+local function rio_daronne_card_alive(card)
+    return card and not card.REMOVED and not card.destroyed and not card.getting_sliced
+        and card.ability and card.ability.extra
+end
+
+local function rio_daronne_is_consumable(card)
+    return card and card.ability and card.ability.consumeable
+        and not card.getting_sliced and not card.destroyed and not card.REMOVED
+end
+
 local function rio_daronne_double_buffs(card)
     local extra = card.ability.extra
     extra.buff_scale = extra.buff_scale * 2
@@ -173,9 +226,10 @@ local function rio_daronne_double_buffs(card)
     extra.Xmult = 1 + (extra.Xmult - 1) * 2
     extra.Xchips = 1 + (extra.Xchips - 1) * 2
     extra.eaten_jokers = (extra.eaten_jokers or 0) + 1
-    if G.GAME and G.GAME.modifiers then
-        G.GAME.modifiers.money_per_hand = (G.GAME.modifiers.money_per_hand or 1) + (extra.money_per_hand_gain or 5)
-    end
+end
+
+local function rio_daronne_dollar_bonus(extra)
+    return (extra.dollar_bonus or 0) + (extra.eaten_jokers or 0) * (extra.money_per_hand_gain or 5)
 end
 
 local function rio_daronne_is_negative_joker(joker)
@@ -221,6 +275,30 @@ local function rio_daronne_eat_adjacent_jokers(card)
     end
 
     return #to_eat
+end
+
+local function rio_daronne_queue_eat_adjacent_jokers(card)
+    if not rio_daronne_card_alive(card) then return end
+    if not G.E_MANAGER then
+        rio_daronne_eat_adjacent_jokers(card)
+        return
+    end
+
+    local extra = card.ability.extra
+    if extra.adjacent_eat_queued then return end
+    extra.adjacent_eat_queued = true
+
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = 0.05,
+        func = function()
+            extra.adjacent_eat_queued = nil
+            if rio_daronne_card_alive(card) then
+                rio_daronne_eat_adjacent_jokers(card)
+            end
+            return true
+        end
+    }))
 end
 
 local function rio_daronne_eat_consumables(card)
@@ -270,6 +348,439 @@ local function rio_daronne_update_ante(card)
         extra.eat_per_hand = extra.eat_per_hand + (ante - extra.last_ante)
         extra.last_ante = ante
     end
+end
+
+local function count_consumables()
+    if not G.consumeables or not G.consumeables.cards then return 0 end
+    local count = 0
+    for _, c in ipairs(G.consumeables.cards) do
+        if rio_daronne_is_consumable(c) then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function rio_daronne_safe_pow(v, p)
+    if not v or v <= 0 then return v end
+    return v ^ p
+end
+
+local function rio_daronne_to_number(value)
+    if type(value) == 'number' then return value end
+
+    if type(to_number) == 'function' then
+        local ok, converted = pcall(to_number, value)
+        if ok and type(converted) == 'number' then return converted end
+    end
+
+    if type(value) == 'table' and type(value.to_number) == 'function' then
+        local ok, converted = pcall(value.to_number, value)
+        if ok and type(converted) == 'number' then return converted end
+    end
+
+    local text = tostring(value or '')
+    if text == '' then return nil end
+    text = text:gsub(',', ''):gsub('%$', ''):gsub('%s+', '')
+    return tonumber(text)
+end
+
+local function rio_daronne_purchase_cost(bought)
+    if not bought then return 0 end
+    local cost = bought.cost
+    if type(cost) == 'function' then
+        local ok, resolved_cost = pcall(cost, bought)
+        cost = ok and resolved_cost or nil
+    end
+    if type(cost) ~= 'number' and bought.base_cost then
+        cost = bought.base_cost
+    end
+    if type(cost) ~= 'number' and bought.config and bought.config.center then
+        cost = bought.config.center.cost
+    end
+    return rio_daronne_to_number(cost) or 0
+end
+
+local function rio_daronne_back_key(back)
+    if not back then return nil end
+    if back.effect and back.effect.center and back.effect.center.key then return back.effect.center.key end
+    if back.center and back.center.key then return back.center.key end
+    if back.key then return back.key end
+    if back.name then return back.name end
+end
+
+local function rio_daronne_is_heaviest_deck_run()
+    if not G.GAME then return false end
+
+    local selected_key = rio_daronne_back_key(G.GAME.selected_back)
+    local viewed_key = rio_daronne_back_key(G.GAME.viewed_back)
+    return selected_key == HEAVIEST_DECK_KEY or viewed_key == HEAVIEST_DECK_KEY
+        or selected_key == 'heaviest_deck' or viewed_key == 'heaviest_deck'
+        or selected_key == 'Heaviest Deck' or viewed_key == 'Heaviest Deck'
+        or selected_key == 'Paquet le plus lourd' or viewed_key == 'Paquet le plus lourd'
+end
+
+local function rio_daronne_feast_conditions(bought)
+    -- #region agent log
+    rio_debug_log('C', 'jokers.lua:feast_conditions', 'feast_conditions_enter', {
+        cost_type = bought and type(bought.cost) or 'nil',
+        runId = 'post-fix-3',
+    })
+    -- #endregion
+    local current_round = G.GAME and G.GAME.current_round
+    local has_round = type(current_round) == 'table'
+    local reroll_cost = has_round and (current_round.reroll_cost or 0) or -1
+    local consumables = count_consumables()
+    local raw_cash = G.GAME and G.GAME.dollars
+    local cash = rio_daronne_to_number(raw_cash) or 0
+    local purchase_cost = rio_daronne_purchase_cost(bought)
+    local dollars = cash + purchase_cost
+    local heaviest_deck = rio_daronne_is_heaviest_deck_run()
+    local ok = has_round and heaviest_deck and reroll_cost >= 30 and consumables >= 100 and dollars >= 100
+    -- #region agent log
+    rio_debug_log('C', 'jokers.lua:feast_conditions', 'feast_conditions_eval', {
+        has_round = has_round and true or false,
+        heaviest_deck = heaviest_deck,
+        reroll_cost = reroll_cost,
+        consumables = consumables,
+        dollars = dollars,
+        cash = cash,
+        cash_type = type(raw_cash),
+        cash_raw = tostring(raw_cash),
+        purchase_cost = purchase_cost,
+        ok = ok,
+        runId = 'post-fix-3',
+    })
+    -- #endregion
+    if not has_round then return false end
+    if not heaviest_deck then return false end
+    if reroll_cost < 30 then return false end
+    if consumables < 100 then return false end
+    if dollars < 100 then return false end
+    return true
+end
+
+local function rio_daronne_consumable_candidates()
+    local candidates = {}
+    if not G.consumeables or not G.consumeables.cards then return candidates end
+
+    for _, consumable in ipairs(G.consumeables.cards) do
+        if rio_daronne_is_consumable(consumable) then
+            candidates[#candidates + 1] = consumable
+        end
+    end
+    return candidates
+end
+
+local function rio_daronne_eat_one_consumable(card, consumed, index)
+    if not rio_daronne_card_alive(card) or not rio_daronne_is_consumable(consumed) then return false end
+
+    rio_daronne_apply_consumable(card, consumed)
+    consumed:juice_up(0.6, 0.7)
+    SMODS.destroy_cards(consumed, true)
+
+    if index == 1 or index % 12 == 0 then
+        rio_daronne_chomp(card, G.C.GOLD)
+    elseif index % 4 == 0 then
+        local sound = pseudorandom_element(DARONNE_VEXPI_SOUNDS, pseudoseed('daronne_vexpi_feast_sound' .. index))
+        play_sound(sound, 0.9 + math.random() * 0.2, 0.55)
+    end
+
+    return true
+end
+
+local function rio_daronne_pow_buffs(card, power)
+    local extra = card.ability.extra
+    extra.chips = rio_daronne_safe_pow(extra.chips, power)
+    extra.mult = rio_daronne_safe_pow(extra.mult, power)
+    extra.Xmult = rio_daronne_safe_pow(extra.Xmult, power)
+    extra.Xchips = rio_daronne_safe_pow(extra.Xchips, power)
+    extra.planet_chips = rio_daronne_safe_pow(extra.planet_chips, power)
+    extra.tarot_mult = rio_daronne_safe_pow(extra.tarot_mult, power)
+    extra.xmult_gain = rio_daronne_safe_pow(extra.xmult_gain, power)
+    extra.xchips_gain = rio_daronne_safe_pow(extra.xchips_gain, power)
+    extra.buff_scale = rio_daronne_safe_pow(extra.buff_scale, power)
+end
+
+local function rio_daronne_begin_grand_feast(card)
+    if not rio_daronne_card_alive(card) then return end
+
+    rio_daronne_pow_buffs(card, 1.5)
+    card:juice_up(1.2, 1.2)
+    if G.ROOM then G.ROOM.jiggle = (G.ROOM.jiggle or 0) + 6 end
+    play_sound('timpani', 0.85, 0.8)
+end
+
+local function rio_daronne_finish_grand_feast(card)
+    if not rio_daronne_card_alive(card) then return end
+
+    local extra = card.ability.extra
+    extra.eaten_jokers = 0
+    extra.dollar_bonus = 20
+
+    local cash = rio_daronne_to_number(G.GAME and G.GAME.dollars) or 0
+    if cash > 0 then
+        ease_dollars(-cash, true)
+    end
+
+    ease_ante(3)
+
+    card:set_edition({polychrome = true}, true, true)
+    card:juice_up(1, 1)
+    play_sound('xmpl_nomnomnom', 1.0, 2.4)
+    card_eval_status_text(card, 'extra', nil, nil, nil, {message = localize('k_xmpl_daronne_feast'), colour = G.C.GOLD})
+end
+
+local function rio_daronne_close_shop_for_intro()
+    if not G then return end
+
+    local function lower(obj, delta)
+        if obj and obj.alignment and obj.alignment.offset then
+            if obj.alignment.offset.xmpl_daronne_original_y == nil then
+                obj.alignment.offset.xmpl_daronne_original_y = obj.alignment.offset.y or 0
+            end
+            obj.alignment.offset.y = obj.alignment.offset.xmpl_daronne_original_y + delta
+        end
+    end
+
+    lower(G.shop, 8)
+    lower(G.SHOP_SIGN, 4)
+end
+
+local function rio_daronne_reopen_shop_after_intro()
+    local function restore(obj)
+        if obj and obj.alignment and obj.alignment.offset
+            and obj.alignment.offset.xmpl_daronne_original_y ~= nil then
+            obj.alignment.offset.y = obj.alignment.offset.xmpl_daronne_original_y
+            obj.alignment.offset.xmpl_daronne_original_y = nil
+        end
+    end
+
+    restore(G.shop)
+    restore(G.SHOP_SIGN)
+end
+
+local function rio_daronne_lock_controls()
+    if not (G.GAME and G.CONTROLLER and G.CONTROLLER.locks) then return end
+
+    G.GAME.xmpl_daronne_saved_locks = {
+        use = G.CONTROLLER.locks.use,
+        shop_reroll = G.CONTROLLER.locks.shop_reroll,
+        locked = G.CONTROLLER.locked,
+    }
+    G.CONTROLLER.locked = true
+    G.CONTROLLER.locks.use = true
+    G.CONTROLLER.locks.shop_reroll = true
+end
+
+local function rio_daronne_unlock_controls()
+    if not (G.CONTROLLER and G.CONTROLLER.locks) then return end
+
+    local saved = G.GAME and G.GAME.xmpl_daronne_saved_locks or {}
+    G.CONTROLLER.locked = false
+    G.CONTROLLER.locks.use = saved.use or false
+    G.CONTROLLER.locks.shop_reroll = saved.shop_reroll or false
+    for key, value in pairs(G.CONTROLLER.locks) do
+        if type(value) == 'boolean' then
+            G.CONTROLLER.locks[key] = false
+        end
+    end
+    G.CONTROLLER.interrupt = G.CONTROLLER.interrupt or {}
+    G.CONTROLLER.interrupt.focus = false
+    if G.GAME then G.GAME.xmpl_daronne_saved_locks = nil end
+end
+
+local function rio_daronne_cleanup_grand_feast()
+    rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'feast_cleanup', {
+        runId = 'post-fix-3',
+    })
+    rio_daronne_reopen_shop_after_intro()
+    rio_daronne_unlock_controls()
+    if G.GAME then G.GAME.xmpl_daronne_feast_lock = nil end
+    if G.E_MANAGER then
+        G.E_MANAGER:add_event(Event({
+            trigger = 'after',
+            delay = 0.15,
+            timer = 'REAL',
+            func = function()
+                rio_daronne_unlock_controls()
+                return true
+            end
+        }))
+    end
+end
+
+local function rio_daronne_start_feast_world()
+    if not G.GAME then return end
+
+    G.GAME.xmpl_daronne_music_active = true
+    G.GAME.xmpl_daronne_bg_lock = true
+
+    if XMP_DARONNE_APPLY_FEAST_BACKGROUND then
+        XMP_DARONNE_APPLY_FEAST_BACKGROUND()
+    end
+    if G.SOUND_MANAGER and G.SOUND_MANAGER.channel then
+        G.SOUND_MANAGER.channel:push({type = 'stop'})
+    end
+    SMODS.previous_track = nil
+end
+
+local function rio_daronne_show_feast_line(card, line_key, index)
+    local colours = {G.C.GOLD, G.C.RED, G.C.PURPLE, G.C.WHITE}
+    local colour = colours[index] or G.C.GOLD
+
+    play_sound(index == 4 and 'gong' or 'tarot1', 0.8 + index * 0.12, index == 4 and 0.6 or 0.4)
+    if G.ROOM then G.ROOM.jiggle = (G.ROOM.jiggle or 0) + (index == 4 and 8 or 3) end
+    if card and card.juice_up then card:juice_up(0.8, 0.8) end
+    attention_text({
+        scale = index == 1 and 0.9 or 0.82,
+        text = localize(line_key),
+        hold = index == 4 and 3.0 or 2.4,
+        align = 'cm',
+        offset = {x = 0, y = -1.3},
+        major = G.ROOM_ATTACH,
+        colour = colour,
+        backdrop_colour = colour,
+        backdrop_scale = index == 4 and 1.8 or 1.25,
+        noisy = true,
+    })
+end
+
+local function rio_daronne_queue_paced_eating(card, candidates, on_complete)
+    candidates = candidates or rio_daronne_consumable_candidates()
+    local index = 1
+    local batch_size = 4
+    local completed = false
+
+    local function finish_eating()
+        if completed then return true end
+        completed = true
+        if on_complete then on_complete() end
+        return true
+    end
+
+    local function eat_next_batch()
+        if index > #candidates or not rio_daronne_card_alive(card) then
+            return finish_eating()
+        end
+
+        local eaten = 0
+        while index <= #candidates and eaten < batch_size do
+            local consumed = candidates[index]
+            if consumed and rio_daronne_is_consumable(consumed) then
+                rio_daronne_eat_one_consumable(card, consumed, index)
+            end
+            index = index + 1
+            eaten = eaten + 1
+        end
+        if index <= #candidates and rio_daronne_card_alive(card) then
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = 0.04,
+                func = function()
+                    eat_next_batch()
+                    return true
+                end
+            }))
+        else
+            finish_eating()
+        end
+        return true
+    end
+
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = 0.08,
+        func = eat_next_batch
+    }))
+end
+
+local function rio_daronne_queue_grand_feast(card)
+    -- #region agent log
+    rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'queue_grand_feast_called', {
+        has_game = G.GAME and true or false,
+        feast_lock = G.GAME and G.GAME.xmpl_daronne_feast_lock and true or false,
+    })
+    -- #endregion
+    if not G.GAME or G.GAME.xmpl_daronne_feast_lock then return end
+
+    G.GAME.xmpl_daronne_feast_lock = true
+    local play_intro = true
+    local candidates = rio_daronne_consumable_candidates()
+    local dialogue_delays = {0.8, 2.3, 3.8, 5.3}
+    local intro_delay = 7.2
+
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = 0.05,
+        timer = 'REAL',
+        func = function()
+            rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'intro_start', {
+                runId = 'post-fix-3',
+                candidates = #candidates,
+            })
+            rio_daronne_start_feast_world()
+            rio_daronne_lock_controls()
+            rio_daronne_close_shop_for_intro()
+            rio_daronne_begin_grand_feast(card)
+            return true
+        end
+    }))
+
+    if play_intro then
+        for i, line_key in ipairs(DARONNE_VEXPI_FEAST_LINES) do
+            local line_index = i
+            local event_line_key = line_key
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after',
+                delay = dialogue_delays[i] or (0.8 + (i - 1) * 1.5),
+                timer = 'REAL',
+                func = function()
+                    rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'dialogue_line', {
+                        runId = 'post-fix-3',
+                        line = line_index,
+                    })
+                    rio_daronne_show_feast_line(card, event_line_key, line_index)
+                    return true
+                end
+            }))
+        end
+    end
+
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = intro_delay,
+        timer = 'REAL',
+        func = function()
+            rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'intro_done', {
+                runId = 'post-fix-3',
+            })
+            rio_daronne_reopen_shop_after_intro()
+            if rio_daronne_card_alive(card) then
+                card:juice_up(1.2, 1.2)
+                if G.ROOM then G.ROOM.jiggle = (G.ROOM.jiggle or 0) + 6 end
+                play_sound('timpani', 0.85, 0.8)
+            end
+            return true
+        end
+    }))
+
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = intro_delay + 0.25,
+        timer = 'REAL',
+        func = function()
+            rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'eating_start', {
+                runId = 'post-fix-3',
+                candidates = #candidates,
+            })
+            rio_daronne_queue_paced_eating(card, candidates, function()
+                rio_daronne_finish_grand_feast(card)
+                rio_daronne_cleanup_grand_feast()
+            end)
+            return true
+        end
+    }))
 end
 
 ----------------------------------------------
@@ -401,7 +912,8 @@ SMODS.Joker{
             eaten_cards = 0,
             eaten_jokers = 0,
             last_ante = nil,
-            money_per_hand_gain = 5
+            money_per_hand_gain = 3,
+            dollar_bonus = nil
         }
     },
     loc_vars = function(self, info_queue, card)
@@ -422,8 +934,12 @@ SMODS.Joker{
             rio_format_num(extra.Xchips),
             extra.eaten_jokers or 0,
             money_gain,
-            (extra.eaten_jokers or 0) * money_gain
+            rio_daronne_dollar_bonus(extra)
         }}
+    end,
+    calc_dollar_bonus = function(self, card)
+        local bonus = rio_daronne_dollar_bonus(card.ability.extra)
+        if bonus > 0 then return bonus end
     end,
     add_to_deck = function(self, card, from_debuff)
         rio_daronne_reduce_slots(card)
@@ -432,12 +948,25 @@ SMODS.Joker{
         rio_daronne_restore_slots(card)
     end,
     calculate = function(self, card, context)
-        rio_daronne_reduce_slots(card)
-        rio_daronne_update_ante(card)
-        if rio_daronne_apply_shop_negative then rio_daronne_apply_shop_negative() end
+        if not context.buying_card then
+            rio_daronne_reduce_slots(card)
+            rio_daronne_update_ante(card)
+            if rio_daronne_apply_shop_negative then rio_daronne_apply_shop_negative() end
+        end
+
+        if context.buying_card then
+            -- #region agent log
+            rio_debug_log('E', 'jokers.lua:calculate', 'buying_card_pre_blueprint', {
+                blueprint = context.blueprint and true or false,
+                buying_self = context.buying_self and true or false,
+            })
+            -- #endregion
+        end
 
         if not context.blueprint then
-            if context.card_added or context.after or context.setting_blind then
+            if context.card_added or context.setting_blind then
+                rio_daronne_queue_eat_adjacent_jokers(card)
+            elseif context.after then
                 rio_daronne_eat_adjacent_jokers(card)
             end
 
@@ -465,6 +994,57 @@ SMODS.Joker{
                     return {
                         message = localize('k_xmpl_daronne_ate'),
                         colour = G.C.FILTER
+                    }
+                end
+            end
+
+            if context.buying_card then
+                local bought = context.card
+                local bought_set = bought and bought.config and bought.config.center and bought.config.center.set or 'nil'
+                -- #region agent log
+                rio_debug_log('A', 'jokers.lua:calculate', 'buying_card_context', {
+                    buying_self = context.buying_self and true or false,
+                    blueprint = context.blueprint and true or false,
+                    bought_set = bought_set,
+                    feast_lock = G.GAME and G.GAME.xmpl_daronne_feast_lock and true or false,
+                })
+                -- #endregion
+            end
+
+            if context.buying_card and not context.buying_self then
+                local bought = context.card
+                local bought_set = bought and bought.config and bought.config.center and bought.config.center.set or 'nil'
+                local is_voucher = bought_set == 'Voucher'
+                local feast_ok = is_voucher and rio_daronne_feast_conditions(bought)
+                -- #region agent log
+                rio_debug_log('B', 'jokers.lua:calculate', 'voucher_buy_branch', {
+                    is_voucher = is_voucher,
+                    feast_ok = feast_ok,
+                    bought_set = bought_set,
+                })
+                -- #endregion
+                if bought and bought.config and bought.config.center
+                    and bought.config.center.set == 'Voucher'
+                    and feast_ok then
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'after',
+                        delay = 0.05,
+                        func = function()
+                            -- #region agent log
+                            rio_debug_log('F', 'jokers.lua:calculate', 'deferred_grand_feast', {
+                                feast_lock = G.GAME and G.GAME.xmpl_daronne_feast_lock and true or false,
+                                runId = 'post-fix-3',
+                            })
+                            -- #endregion
+                            if rio_daronne_card_alive(card) and G.GAME and not G.GAME.xmpl_daronne_feast_lock then
+                                rio_daronne_queue_grand_feast(card)
+                            end
+                            return true
+                        end
+                    }))
+                    return {
+                        message = localize('k_xmpl_daronne_feast'),
+                        colour = G.C.GOLD
                     }
                 end
             end
@@ -496,17 +1076,6 @@ SMODS.Joker{
         end
     end
 }
-
-local function count_consumables()
-    if not G.consumeables or not G.consumeables.cards then return 0 end
-    local count = 0
-    for _, c in ipairs(G.consumeables.cards) do
-        if c.ability and c.ability.consumeable and not c.getting_sliced and not c.destroyed then
-            count = count + 1
-        end
-    end
-    return count
-end
 
 local function has_daronne_vexpi()
     if not G.jokers or not G.jokers.cards then return false end

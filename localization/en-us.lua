@@ -42,7 +42,9 @@ return {
                     'all {C:attention}Jokers{} in the shop are {C:dark_edition}Negative{}',
                     'Each eaten {C:dark_edition}Negative{} Joker gives {C:money}+#13#${}',
                     'to each remaining hand {C:inactive}(Current: +#14#$){}',
-                    '{C:inactive}Current: +#8# Chips, +#9# Mult, X#10# Mult, X#11# Chips{}'
+                    '{C:inactive}Current: +#8# Chips, +#9# Mult, X#10# Mult, X#11# Chips{}',
+                    'If reroll is {C:money}$30{} or more, {C:attention}100+{} consumables, {C:money}$100+{}:',
+                    'Buying a {C:attention}Voucher{} triggers {C:attention}Grand Feast{}'
                 }
             }
         },
@@ -85,7 +87,12 @@ return {
             k_xmpl_peace_kindness = 'Peace & Kindness!',
             k_xmpl_self_destruct = 'Self-Destruct!',
             k_xmpl_daronne_reroll = 'Dinner time!',
-            k_xmpl_daronne_ate = 'Meal done!'
+            k_xmpl_daronne_ate = 'Meal done!',
+            k_xmpl_daronne_feast = 'GRAND FEAST!',
+            k_xmpl_daronne_feast_line_1 = 'Finally, I can unleash my real power',
+            k_xmpl_daronne_feast_line_2 = "I'M HUNGRY MORE THAN EVER",
+            k_xmpl_daronne_feast_line_3 = "I'M GONNA EAT THE WHOLE DAMN UNIVERSE",
+            k_xmpl_daronne_feast_line_4 = 'BEHOLD! THE POWER OF AN ANGEL'
         }
     }
 }
