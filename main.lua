@@ -22,3 +22,10 @@ if err then
 else
     f()
 end
+
+f, err = SMODS.load_file("items/decks.lua")
+if err then
+    error(err)
+else
+    f()
+end

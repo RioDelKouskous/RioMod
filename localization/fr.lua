@@ -55,6 +55,15 @@ return {
                 }
             }
         },
+        Back = {
+            b_xmpl_heaviest_deck = {
+                name = 'Paquet le plus lourd',
+                text = {
+                    'Commence avec {C:attention}La daronne a vexpi{}',
+                    'Gagne {C:money}20${} au début de la partie',
+                }
+            }
+        },
         Booster = {
             p_xmpl_rio_pack = {
                 name = 'Paquet Rio',

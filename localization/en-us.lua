@@ -55,6 +55,15 @@ return {
                 }
             }
         },
+        Back = {
+            b_xmpl_heaviest_deck = {
+                name = 'Heaviest Deck',
+                text = {
+                    'Start with {C:attention}Vexpi\'s Mother{}',
+                    'Gain {C:money}$20{} at start of run',
+                }
+            }
+        },
         Booster = {
             p_xmpl_rio_pack = {
                 name = 'Rio Pack',
