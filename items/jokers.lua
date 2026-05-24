@@ -42,6 +42,8 @@ local DARONNE_VEXPI_WORDS = {
     'Miam!'
 }
 
+local rio_daronne_apply_shop_negative
+
 local function rio_format_num(value)
     if type(value) ~= 'number' then return value end
     local formatted = string.format('%.2f', value)
@@ -71,6 +73,13 @@ local function rio_daronne_reduce_slots(card)
     local extra = card.ability.extra
     if #rio_daronne_active_others(card) > 0 then return end
 
+    local old_delta = extra.slot_delta or 0
+    local base_limit = extra.base_card_limit
+    if not base_limit then
+        base_limit = G.jokers.config.card_limit + old_delta
+        extra.base_card_limit = base_limit
+    end
+
     local neg_bonus = 0
     for _, j in ipairs(G.jokers.cards) do
         if j ~= card and j.edition and j.edition.negative
@@ -79,15 +88,11 @@ local function rio_daronne_reduce_slots(card)
         end
     end
 
-    local old_delta = extra.slot_delta or 0
-    G.jokers.config.card_limit = G.jokers.config.card_limit + old_delta
-
-    local current_limit = G.jokers.config.card_limit
     local target = 1 + neg_bonus
-    local new_delta = math.max(current_limit - target, 0)
+    local new_delta = math.max(base_limit - target, 0)
     extra.slot_delta = new_delta
     G.GAME.xmpl_daronne_vexpi_slot_delta = new_delta
-    G.jokers.config.card_limit = current_limit - new_delta
+    G.jokers.config.card_limit = base_limit - new_delta
 end
 
 local function rio_daronne_restore_slots(card)
@@ -98,7 +103,9 @@ local function rio_daronne_restore_slots(card)
     if #others > 0 then
         if extra.slot_delta then
             others[1].ability.extra.slot_delta = extra.slot_delta
+            others[1].ability.extra.base_card_limit = extra.base_card_limit
             extra.slot_delta = nil
+            extra.base_card_limit = nil
         end
         return
     end
@@ -107,6 +114,7 @@ local function rio_daronne_restore_slots(card)
     if slot_delta then
         G.jokers.config.card_limit = G.jokers.config.card_limit + slot_delta
         extra.slot_delta = nil
+        extra.base_card_limit = nil
         G.GAME.xmpl_daronne_vexpi_slot_delta = nil
     end
 end
@@ -405,6 +413,7 @@ SMODS.Joker{
     calculate = function(self, card, context)
         rio_daronne_reduce_slots(card)
         rio_daronne_update_ante(card)
+        if rio_daronne_apply_shop_negative then rio_daronne_apply_shop_negative() end
 
         if not context.blueprint then
             if context.card_added or context.after or context.setting_blind then
@@ -488,22 +497,41 @@ local function has_daronne_vexpi()
     return false
 end
 
-local function rio_daronne_apply_shop_negative()
+local function rio_daronne_make_negative(card)
+    if card and not (card.edition and card.edition.negative) and not card.getting_sliced and not card.destroyed then
+        card:set_edition({negative = true}, true, true)
+    end
+end
+
+rio_daronne_apply_shop_negative = function()
     if not (count_consumables() >= 10 and has_daronne_vexpi()) then return end
     if G.shop_jokers then
         for _, c in ipairs(G.shop_jokers.cards or {}) do
-            if not (c.edition and c.edition.negative) and not c.getting_sliced and not c.destroyed then
-                c:set_edition({negative = true}, true, true)
-            end
+            rio_daronne_make_negative(c)
         end
     end
     if G.shop_booster then
         for _, c in ipairs(G.shop_booster.cards or {}) do
-            if not (c.edition and c.edition.negative) and not c.getting_sliced and not c.destroyed then
-                c:set_edition({negative = true}, true, true)
+            rio_daronne_make_negative(c)
+        end
+    end
+    if G.pack_cards then
+        for _, c in ipairs(G.pack_cards.cards or {}) do
+            if c.config and c.config.center and c.config.center.set == 'Joker' then
+                rio_daronne_make_negative(c)
             end
         end
     end
+end
+
+local original_create_card = create_card
+function create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
+    local card = original_create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
+    if card and G and area == G.pack_cards and count_consumables() >= 10 and has_daronne_vexpi()
+        and card.config and card.config.center and card.config.center.set == 'Joker' then
+        rio_daronne_make_negative(card)
+    end
+    return card
 end
 
 local original_create_card_for_shop = create_card_for_shop
@@ -513,9 +541,20 @@ function create_card_for_shop(area)
         if card.config and card.config.center then
             local s = card.config.center.set
             if s == 'Joker' or s == 'Booster' then
-                card:set_edition({negative = true}, true, true)
+                rio_daronne_make_negative(card)
             end
         end
     end
     return card
+end
+
+if CardArea and CardArea.emplace then
+    local original_cardarea_emplace = CardArea.emplace
+    function CardArea:emplace(card, ...)
+        local ret = original_cardarea_emplace(self, card, ...)
+        if G and (self == G.consumeables or self == G.shop_jokers or self == G.shop_booster or self == G.pack_cards) then
+            rio_daronne_apply_shop_negative()
+        end
+        return ret
+    end
 end
