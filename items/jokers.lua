@@ -132,6 +132,9 @@ local function rio_daronne_double_buffs(card)
     extra.Xmult = 1 + (extra.Xmult - 1) * 2
     extra.Xchips = 1 + (extra.Xchips - 1) * 2
     extra.eaten_jokers = (extra.eaten_jokers or 0) + 1
+    if G.GAME and G.GAME.modifiers then
+        G.GAME.modifiers.money_per_hand = (G.GAME.modifiers.money_per_hand or 1) + (extra.money_per_hand_gain or 5)
+    end
 end
 
 local function rio_daronne_is_negative_joker(joker)
@@ -356,12 +359,14 @@ SMODS.Joker{
             eat_per_hand = 2,
             eaten_cards = 0,
             eaten_jokers = 0,
-            last_ante = nil
+            last_ante = nil,
+            money_per_hand_gain = 5
         }
     },
     loc_vars = function(self, info_queue, card)
         local extra = rio_daronne_get_extra(card, self)
         local scale = extra.buff_scale or 1
+        local money_gain = extra.money_per_hand_gain or 5
         return {vars = {
             extra.create_on_reroll,
             extra.eat_per_hand,
@@ -374,7 +379,9 @@ SMODS.Joker{
             extra.mult,
             rio_format_num(extra.Xmult),
             rio_format_num(extra.Xchips),
-            extra.eaten_jokers or 0
+            extra.eaten_jokers or 0,
+            money_gain,
+            (extra.eaten_jokers or 0) * money_gain
         }}
     end,
     add_to_deck = function(self, card, from_debuff)
@@ -447,3 +454,35 @@ SMODS.Joker{
         end
     end
 }
+
+local function count_consumables()
+    if not G.consumeables or not G.consumeables.cards then return 0 end
+    local count = 0
+    for _, c in ipairs(G.consumeables.cards) do
+        if c.ability and c.ability.consumeable and not c.getting_sliced and not c.destroyed then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function has_daronne_vexpi()
+    if not G.jokers or not G.jokers.cards then return false end
+    for _, j in ipairs(G.jokers.cards) do
+        if j.config and j.config.center and j.config.center.key == DARONNE_VEXPI_KEY and not j.getting_sliced and not j.destroyed then
+            return true
+        end
+    end
+    return false
+end
+
+local original_create_card = create_card
+function create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
+    local card = original_create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
+    if card and _type == 'Joker' and area == G.shop_jokers then
+        if count_consumables() >= 10 and has_daronne_vexpi() then
+            card:set_edition({negative = true}, true, true)
+        end
+    end
+    return card
+end

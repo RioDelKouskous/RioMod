@@ -38,6 +38,10 @@ return {
                     'Autre consommable: {X:chips,C:white}X#6#{} Jetons',
                     'Mange les Jokers {C:dark_edition}negatifs{} voisins',
                     '{C:attention}X2{} par Joker mange {C:inactive}(X#7#, #12# manges){}',
+                    'Si {C:attention}+10{} consommables sont presents,',
+                    'tous les {C:attention}Jokers{} dans le shop sont {C:dark_edition}negatifs{}',
+                    'Chaque Joker {C:dark_edition}negatif{} mange donne {C:money}+#13#${}',
+                    'a chaque main restante {C:inactive}(Actuel: +#14#$){}',
                     '{C:inactive}Actuel: +#8# Jetons, +#9# Multi, X#10# Multi, X#11# Jetons{}'
                 }
             }

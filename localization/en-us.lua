@@ -38,6 +38,10 @@ return {
                     'Other consumable: {X:chips,C:white}X#6#{} Chips',
                     'Eats adjacent {C:dark_edition}Negative{} Jokers',
                     '{C:attention}X2{} per eaten Joker {C:inactive}(X#7#, #12# eaten){}',
+                    'If {C:attention}10+{} consumables are present,',
+                    'all {C:attention}Jokers{} in the shop are {C:dark_edition}Negative{}',
+                    'Each eaten {C:dark_edition}Negative{} Joker gives {C:money}+#13#${}',
+                    'to each remaining hand {C:inactive}(Current: +#14#$){}',
                     '{C:inactive}Current: +#8# Chips, +#9# Mult, X#10# Mult, X#11# Chips{}'
                 }
             }
