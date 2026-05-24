@@ -71,11 +71,23 @@ local function rio_daronne_reduce_slots(card)
     local extra = card.ability.extra
     if #rio_daronne_active_others(card) > 0 then return end
 
-    local current_limit = G.jokers.config.card_limit or 1
-    local slot_delta = math.max(current_limit - 1, 0)
-    extra.slot_delta = (extra.slot_delta or 0) + slot_delta
-    G.GAME.xmpl_daronne_vexpi_slot_delta = extra.slot_delta
-    G.jokers.config.card_limit = current_limit - slot_delta
+    local neg_bonus = 0
+    for _, j in ipairs(G.jokers.cards) do
+        if j ~= card and j.edition and j.edition.negative
+            and j.added_to_deck and not j.getting_sliced and not j.destroyed then
+            neg_bonus = neg_bonus + 1
+        end
+    end
+
+    local old_delta = extra.slot_delta or 0
+    G.jokers.config.card_limit = G.jokers.config.card_limit + old_delta
+
+    local current_limit = G.jokers.config.card_limit
+    local target = 1 + neg_bonus
+    local new_delta = math.max(current_limit - target, 0)
+    extra.slot_delta = new_delta
+    G.GAME.xmpl_daronne_vexpi_slot_delta = new_delta
+    G.jokers.config.card_limit = current_limit - new_delta
 end
 
 local function rio_daronne_restore_slots(card)
@@ -476,12 +488,33 @@ local function has_daronne_vexpi()
     return false
 end
 
-local original_create_card = create_card
-function create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
-    local card = original_create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
-    if card and _type == 'Joker' and area == G.shop_jokers then
-        if count_consumables() >= 10 and has_daronne_vexpi() then
-            card:set_edition({negative = true}, true, true)
+local function rio_daronne_apply_shop_negative()
+    if not (count_consumables() >= 10 and has_daronne_vexpi()) then return end
+    if G.shop_jokers then
+        for _, c in ipairs(G.shop_jokers.cards or {}) do
+            if not (c.edition and c.edition.negative) and not c.getting_sliced and not c.destroyed then
+                c:set_edition({negative = true}, true, true)
+            end
+        end
+    end
+    if G.shop_booster then
+        for _, c in ipairs(G.shop_booster.cards or {}) do
+            if not (c.edition and c.edition.negative) and not c.getting_sliced and not c.destroyed then
+                c:set_edition({negative = true}, true, true)
+            end
+        end
+    end
+end
+
+local original_create_card_for_shop = create_card_for_shop
+function create_card_for_shop(area)
+    local card = original_create_card_for_shop(area)
+    if card and count_consumables() >= 10 and has_daronne_vexpi() then
+        if card.config and card.config.center then
+            local s = card.config.center.set
+            if s == 'Joker' or s == 'Booster' then
+                card:set_edition({negative = true}, true, true)
+            end
         end
     end
     return card
