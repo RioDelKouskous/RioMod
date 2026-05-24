@@ -10,14 +10,20 @@ SMODS.Atlas{
 ----------------------------------------------
 ------------ DECK DEFINITIONS ----------------
 
+local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
+
 SMODS.Back{
     key = 'heaviest_deck',
     atlas = 'heaviest_deck_atlas',
     pos = {x = 0, y = 0},
-    unlocked = true,
-    discovered = true,
+    unlocked = false,
+    discovered = false,
     config = {
         dollars = 20,
-        jokers = {'j_xmpl_daronne_vexpi'},
+        jokers = {DARONNE_VEXPI_KEY},
     },
+    check_for_unlock = function(self, args)
+        local joker = G.P_CENTERS[DARONNE_VEXPI_KEY]
+        return joker and joker.discovered
+    end,
 }

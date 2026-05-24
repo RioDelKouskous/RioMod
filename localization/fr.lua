@@ -61,6 +61,10 @@ return {
                 text = {
                     'Commence avec {C:attention}La daronne a vexpi{}',
                     'Gagne {C:money}20${} au début de la partie',
+                },
+                unlock = {
+                    'Avoir eu {C:attention}La daronne a vexpi{}',
+                    'en partie',
                 }
             }
         },

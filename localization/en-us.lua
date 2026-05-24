@@ -61,6 +61,10 @@ return {
                 text = {
                     'Start with {C:attention}Vexpi\'s Mother{}',
                     'Gain {C:money}$20{} at start of run',
+                },
+                unlock = {
+                    'Have {C:attention}Vexpi\'s Mother{}',
+                    'in a run',
                 }
             }
         },
