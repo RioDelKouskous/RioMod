@@ -24,13 +24,28 @@ SMODS.Atlas{
     px = 150, py = 95
 }
 
-SMODS.Sound{
-    key = 'robloxchezburger',
-    path = 'robloxchezburger.ogg'
+local DARONNE_VEXPI_SOUND_KEYS = {
+    'breakfart',
+    'cartooneating',
+    'maneatingchips',
+    'nomnomnom',
+    'rawmeat',
+    'robloxchezburger',
 }
 
+for _, key in ipairs(DARONNE_VEXPI_SOUND_KEYS) do
+    SMODS.Sound{
+        key = key,
+        path = key .. '.ogg'
+    }
+end
+
+local DARONNE_VEXPI_SOUNDS = {}
+for _, key in ipairs(DARONNE_VEXPI_SOUND_KEYS) do
+    DARONNE_VEXPI_SOUNDS[#DARONNE_VEXPI_SOUNDS + 1] = 'xmpl_' .. key
+end
+
 local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
-local DARONNE_VEXPI_SOUND = 'xmpl_robloxchezburger'
 local DARONNE_VEXPI_WORDS = {
     'Yummy!',
     'Delicious!',
@@ -39,7 +54,12 @@ local DARONNE_VEXPI_WORDS = {
     'Nom nom!',
     'Chef kiss!',
     'Snack time!',
-    'Miam!'
+    'Miam!',
+    'CHEESEBURGER!',
+    'THE UNIVERSE IS MINE!',
+    'Om nom nom!',
+    'MORE MORE MORE MORE MORE MORE MORE !',
+    'CHICKEN!'
 }
 
 local rio_daronne_apply_shop_negative
@@ -124,7 +144,8 @@ local function rio_daronne_chomp(card, colour)
     local count = (extra.eaten_cards or 0) + (extra.eaten_jokers or 0)
     local message = pseudorandom_element(DARONNE_VEXPI_WORDS, pseudoseed('daronne_vexpi_chomp' .. count))
     card_eval_status_text(card, 'extra', nil, nil, nil, {message = message, colour = colour or G.C.FILTER})
-    play_sound(DARONNE_VEXPI_SOUND, 0.95 + math.random() * 0.1, 0.8)
+    local sound = pseudorandom_element(DARONNE_VEXPI_SOUNDS, pseudoseed('daronne_vexpi_sound' .. count))
+    play_sound(sound, 0.95 + math.random() * 0.1, 0.8)
 end
 
 local function rio_daronne_apply_consumable(card, consumed)
