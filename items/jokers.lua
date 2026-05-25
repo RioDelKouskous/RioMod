@@ -419,7 +419,7 @@ end
 local function rio_daronne_self_destruct(card)
     if not rio_daronne_card_alive(card) then return end
     rio_daronne_set_absolute(card, false)
-    rio_daronne_cleanup_grand_feast()
+    rio_daronne_cleanup_grand_feast(true)
     card.getting_sliced = true
     card:juice_up(0.8, 0.8)
     local function destroy()
@@ -606,6 +606,7 @@ end
 local function rio_daronne_begin_grand_feast(card)
     if not rio_daronne_card_alive(card) then return end
 
+    card.ability.extra.feast_world_active = true
     rio_daronne_set_absolute(card, true)
     rio_daronne_pow_buffs(card, 2)
     card:juice_up(1.2, 1.2)
@@ -694,13 +695,15 @@ local function rio_daronne_unlock_controls()
     if G.GAME then G.GAME.xmpl_daronne_saved_locks = nil end
 end
 
-rio_daronne_cleanup_grand_feast = function()
+rio_daronne_cleanup_grand_feast = function(clear_world)
     rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'feast_cleanup', {
         runId = 'post-fix-3',
     })
     rio_daronne_reopen_shop_after_intro()
     rio_daronne_unlock_controls()
-    rio_daronne_clear_feast_world()
+    if clear_world then
+        rio_daronne_clear_feast_world()
+    end
     if G.GAME then G.GAME.xmpl_daronne_feast_lock = nil end
     if G.E_MANAGER then
         G.E_MANAGER:add_event(Event({
@@ -1058,6 +1061,10 @@ SMODS.Joker{
         end
     end,
     remove_from_deck = function(self, card, from_debuff)
+        if card and card.ability and card.ability.extra and card.ability.extra.feast_world_active then
+            rio_daronne_clear_feast_world()
+            card.ability.extra.feast_world_active = nil
+        end
         rio_daronne_restore_slots(card)
     end,
     calculate = function(self, card, context)
