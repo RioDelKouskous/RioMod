@@ -1,5 +1,22 @@
 return {
     descriptions = {
+        Other = {
+            xmpl_daronne_grand_feast = {
+                name = 'Grand Festin',
+                text = {
+                    'Eleve tous les buffs actuels de {X:dark_edition,C:white} ^1.5 {}',
+                    'Mange tous les {C:attention}consommables{}',
+                    'fixe argent par main a {C:money}+20${}',
+                    'Met argent {C:money}0${}',
+                    'Avance de {C:attention}+3{} Ante',
+                    'Deviens {C:dark_edition}Polychrome{}',
+                    "{C:green}> La daronne a vexpi devient inéluctable{}",
+                    "{C:green}> L'univers s'incline devant elle{}",
+                    "{C:green}> Most epic moment in a card game{}",
+
+                }
+            }
+        },
         Joker = {
             j_xmpl_derek = {
                 name = 'Derek',
@@ -44,7 +61,11 @@ return {
                     'a chaque main restante {C:inactive}(Actuel: +#14#$){}',
                     '{C:inactive}Actuel: +#8# Jetons, +#9# Multi, X#10# Multi, X#11# Jetons{}',
                     'Si reroll {C:money}30$+{}, {C:attention}100+{} consommables, {C:money}100$+{}:',
-                    'Achat {C:attention}Voucher{} declenche le {C:attention}Grand Festin{}'
+                    'Achat {C:attention}Voucher{} declenche le {C:dark_edition,E:2}Grand Festin{}',
+                    'Manger un joker {C:blue}Legendaire{} declenche le {C:dark_edition,E:2}Grand Festin{}',
+                    '{C:green}> Elle va finir par crasher ton jeu{}',
+                    "{C:green}> La question c'est quand ?{}",
+                    "{C:green}> Et elle putain de longue cette carte !{}",
                 }
             }
         },

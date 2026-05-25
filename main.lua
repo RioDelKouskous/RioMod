@@ -13,7 +13,7 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
------------- GRAND FEAST MUSIC ---------------
+------------ GRAND FEAST EFFECTS ---------------
 
 SMODS.Sound{
     key = 'music_daronne_feast',
@@ -28,8 +28,6 @@ SMODS.Sound{
     end
 }
 
-----------------------------------------------
------------- GRAND FEAST BACKGROUND ----------
 
 local DARONNE_FEAST_BACKGROUND = {
     HEX('ff2a6d'),

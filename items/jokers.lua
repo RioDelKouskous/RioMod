@@ -71,6 +71,7 @@ local DARONNE_VEXPI_FEAST_LINES = {
 }
 
 local rio_daronne_apply_shop_negative
+local rio_daronne_queue_grand_feast
 
 -- #region agent log
 local RIO_DEBUG_LOG_PATH = 'C:/Users/Suiveurtag/AppData/Roaming/Balatro/Mods/RioMod/debug-dfab94.log'
@@ -237,6 +238,12 @@ local function rio_daronne_is_negative_joker(joker)
         and joker.edition and joker.edition.negative and not joker.getting_sliced and not joker.destroyed
 end
 
+local function rio_daronne_is_legendary_joker(joker)
+    if not (joker and joker.config and joker.config.center and joker.config.center.set == 'Joker') then return false end
+    local rarity = joker.config.center.rarity
+    return rarity == 4 or rarity == 'Legendary' or rarity == 'legendary'
+end
+
 local function rio_daronne_eat_adjacent_jokers(card)
     if not G.jokers or not G.jokers.cards then return 0 end
 
@@ -265,13 +272,19 @@ local function rio_daronne_eat_adjacent_jokers(card)
         end
     end
 
+    local ate_legendary = false
     for _, joker in ipairs(to_eat) do
+        if rio_daronne_is_legendary_joker(joker) then ate_legendary = true end
         rio_daronne_double_buffs(card)
         SMODS.destroy_cards(joker, true)
     end
 
     if #to_eat > 0 then
         rio_daronne_chomp(card, G.C.RED)
+    end
+
+    if ate_legendary and rio_daronne_card_alive(card) and G.GAME and not G.GAME.xmpl_daronne_feast_lock then
+        rio_daronne_queue_grand_feast(card)
     end
 
     return #to_eat
@@ -364,6 +377,21 @@ end
 local function rio_daronne_safe_pow(v, p)
     if not v or v <= 0 then return v end
     return v ^ p
+end
+
+local function rio_daronne_reset_slots_to_one(card)
+    if not G.GAME or not G.jokers or not G.jokers.config or not rio_daronne_card_alive(card) then return end
+    if #rio_daronne_active_others(card) > 0 then return end
+
+    local extra = card.ability.extra
+    local old_delta = extra.slot_delta or G.GAME.xmpl_daronne_vexpi_slot_delta or 0
+    local base_limit = extra.base_card_limit or (G.jokers.config.card_limit + old_delta)
+    local new_delta = math.max(base_limit - 1, 0)
+
+    extra.base_card_limit = base_limit
+    extra.slot_delta = new_delta
+    G.GAME.xmpl_daronne_vexpi_slot_delta = new_delta
+    G.jokers.config.card_limit = 1
 end
 
 local function rio_daronne_to_number(value)
@@ -695,7 +723,7 @@ local function rio_daronne_queue_paced_eating(card, candidates, on_complete)
     }))
 end
 
-local function rio_daronne_queue_grand_feast(card)
+rio_daronne_queue_grand_feast = function(card)
     -- #region agent log
     rio_debug_log('F', 'jokers.lua:queue_grand_feast', 'queue_grand_feast_called', {
         has_game = G.GAME and true or false,
@@ -917,6 +945,7 @@ SMODS.Joker{
         }
     },
     loc_vars = function(self, info_queue, card)
+        info_queue[#info_queue + 1] = {key = 'xmpl_daronne_grand_feast', set = 'Other'}
         local extra = rio_daronne_get_extra(card, self)
         local scale = extra.buff_scale or 1
         local money_gain = extra.money_per_hand_gain or 5
@@ -996,6 +1025,10 @@ SMODS.Joker{
                         colour = G.C.FILTER
                     }
                 end
+            end
+
+            if context.end_of_round and not context.repetition then
+                rio_daronne_reset_slots_to_one(card)
             end
 
             if context.buying_card then

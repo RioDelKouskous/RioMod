@@ -1,5 +1,22 @@
 return {
     descriptions = {
+        Other = {
+            xmpl_daronne_grand_feast = {
+                name = 'Grand Feast',
+                text = {
+                    'Raises all current and future',
+                    'buffs by {X:dark_edition,C:white} ^1.5 {}',
+                    'Eats every consumable, sets',
+                    'eaten Jokers to {C:attention}0{}',
+                    'sets money per hand to {C:money}+$20{},',
+                    'removes all money, gains {C:attention}+3{} Ante,',
+                    'and becomes {C:dark_edition}Polychrome{}',
+                    "{C:green}> Vexpi's Mother becomes inevitable{}",
+                    "{C:green}> The universe bows before her{}",
+                    "{C:green}> Most epic moment in a card game{}",
+                }
+            }
+        },
         Joker = {
             j_xmpl_derek = {
                 name = 'Derek',
@@ -44,7 +61,10 @@ return {
                     'to each remaining hand {C:inactive}(Current: +#14#$){}',
                     '{C:inactive}Current: +#8# Chips, +#9# Mult, X#10# Mult, X#11# Chips{}',
                     'If reroll is {C:money}$30{} or more, {C:attention}100+{} consumables, {C:money}$100+{}:',
-                    'Buying a {C:attention}Voucher{} triggers {C:attention}Grand Feast{}'
+                    'Buying a {C:attention}Voucher{} triggers {C:dark_edition,E:2}Grand Feast{}',
+                    'Eating a {C:blue}Legendary{} Joker triggers {C:dark_edition,E:2}Grand Feast{}',
+                    '{C:green}> She is going to crash your game eventually{}',
+                    '{C:green}> The question is when ?{}'
                 }
             }
         },
