@@ -270,6 +270,10 @@ local function rio_daronne_dollar_bonus(extra)
     return extra.dollar_bonus or 0
 end
 
+local function rio_daronne_has_eternal_sticker(joker)
+    return joker and joker.ability and joker.ability.eternal
+end
+
 local function rio_daronne_is_negative_joker(joker)
     return joker and joker.config and joker.config.center and joker.config.center.set == 'Joker'
         and joker.edition and joker.edition.negative and not joker.getting_sliced and not joker.destroyed
@@ -312,6 +316,10 @@ local function rio_daronne_eat_adjacent_jokers(card)
     local ate_legendary = false
     for _, joker in ipairs(to_eat) do
         if rio_daronne_is_legendary_joker(joker) then ate_legendary = true end
+        if rio_daronne_has_eternal_sticker(joker) then
+            ease_dollars(50)
+            card_eval_status_text(card, 'extra', nil, nil, nil, {message = localize('k_xmpl_daronne_eternal'), colour = G.C.MONEY})
+        end
         rio_daronne_double_buffs(card, joker)
         SMODS.destroy_cards(joker, true)
     end
