@@ -317,7 +317,7 @@ local function rio_daronne_eat_adjacent_jokers(card)
     for _, joker in ipairs(to_eat) do
         if rio_daronne_is_legendary_joker(joker) then ate_legendary = true end
         if rio_daronne_has_eternal_sticker(joker) then
-            ease_dollars(50)
+            ease_dollars(30)
             card_eval_status_text(card, 'extra', nil, nil, nil, {message = localize('k_xmpl_daronne_eternal'), colour = G.C.MONEY})
         end
         rio_daronne_double_buffs(card, joker)
@@ -1220,6 +1220,45 @@ local function has_daronne_vexpi()
     return false
 end
 
+local function rio_daronne_real_joker_limit()
+    if not G.jokers or not G.jokers.config or not G.jokers.cards then return nil end
+    local saved_delta = G.GAME and G.GAME.xmpl_daronne_vexpi_slot_delta or 0
+    for _, j in ipairs(G.jokers.cards) do
+        if j.config and j.config.center and j.config.center.key == DARONNE_VEXPI_KEY and not j.getting_sliced and not j.destroyed then
+            local extra = j.ability and j.ability.extra or {}
+            return extra.base_card_limit or (G.jokers.config.card_limit + (extra.slot_delta or saved_delta or 0))
+        end
+    end
+    return nil
+end
+
+if G and G.P_CENTERS and G.P_CENTERS.c_soul and not G.P_CENTERS.c_soul.xmpl_daronne_can_use_patched then
+    local original_soul_can_use = G.P_CENTERS.c_soul.can_use
+    local original_soul_use = G.P_CENTERS.c_soul.use
+    G.P_CENTERS.c_soul.can_use = function(self, card)
+        if original_soul_can_use and original_soul_can_use(self, card) then return true end
+        local real_limit = rio_daronne_real_joker_limit()
+        return real_limit and G.jokers and G.jokers.cards and #G.jokers.cards < real_limit or false
+    end
+    if original_soul_use then
+        G.P_CENTERS.c_soul.use = function(self, card, ...)
+            local real_limit = rio_daronne_real_joker_limit()
+            if not (real_limit and G.jokers and G.jokers.config and G.jokers.cards and #G.jokers.cards < real_limit) then
+                return original_soul_use(self, card, ...)
+            end
+
+            local old_limit = G.jokers.config.card_limit
+            G.jokers.config.card_limit = real_limit
+            G.GAME.xmpl_daronne_force_soul_legendary = true
+            local ret = {original_soul_use(self, card, ...)}
+            G.GAME.xmpl_daronne_force_soul_legendary = nil
+            G.jokers.config.card_limit = old_limit
+            return unpack(ret)
+        end
+    end
+    G.P_CENTERS.c_soul.xmpl_daronne_can_use_patched = true
+end
+
 local function rio_daronne_make_negative(card)
     if card and not (card.edition and card.edition.negative) and not card.getting_sliced and not card.destroyed then
         card:set_edition({negative = true}, true, true)
@@ -1249,6 +1288,9 @@ end
 
 local original_create_card = create_card
 function create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
+    if G and G.GAME and G.GAME.xmpl_daronne_force_soul_legendary and _type == 'Joker' and area == G.jokers then
+        legendary = true
+    end
     local card = original_create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
     if card and G and area == G.pack_cards and count_consumables() >= 10 and has_daronne_vexpi()
         and card.config and card.config.center and card.config.center.set == 'Joker' then
