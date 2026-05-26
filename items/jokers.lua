@@ -71,6 +71,8 @@ local DARONNE_VEXPI_FEAST_LINES = {
     'k_xmpl_daronne_feast_line_4',
 }
 
+local DARONNE_VEXPI_STAT_CAP = 1e300
+
 local rio_daronne_apply_shop_negative
 local rio_daronne_queue_grand_feast
 local rio_daronne_cleanup_grand_feast
@@ -137,10 +139,56 @@ end
 -- #endregion
 
 local function rio_format_num(value)
+    if type(value) == 'table' then
+        if number_format then return number_format(value) end
+        return tostring(value)
+    end
     if type(value) ~= 'number' then return value end
+    if value ~= value then return '0' end
+    if value == math.huge or value >= DARONNE_VEXPI_STAT_CAP then value = DARONNE_VEXPI_STAT_CAP end
+    if math.abs(value) >= 1000000 then return string.format('%.2e', value) end
     local formatted = string.format('%.2f', value)
     formatted = formatted:gsub('0+$', ''):gsub('%.$', '')
     return formatted
+end
+
+local function rio_daronne_talisman_active()
+    return type(to_big) == 'function'
+end
+
+local function rio_daronne_stat_cap()
+    return rio_daronne_talisman_active() and to_big(DARONNE_VEXPI_STAT_CAP) or DARONNE_VEXPI_STAT_CAP
+end
+
+local function rio_daronne_cap_stat(value)
+    if type(value) == 'table' and rio_daronne_talisman_active() then
+        local cap = rio_daronne_stat_cap()
+        local negative_cap = to_big(-DARONNE_VEXPI_STAT_CAP)
+        if value > cap then return cap end
+        if value < negative_cap then return negative_cap end
+        return value
+    end
+    if type(value) ~= 'number' then return value end
+    if value ~= value then return 0 end
+    if rio_daronne_talisman_active() then
+        return rio_daronne_cap_stat(to_big(value))
+    end
+    local cap = rio_daronne_stat_cap()
+    if value == math.huge or value > cap then return cap end
+    if value == -math.huge or value < -cap then return -cap end
+    return value
+end
+
+local function rio_daronne_cap_buffs(extra)
+    extra.chips = rio_daronne_cap_stat(extra.chips)
+    extra.mult = rio_daronne_cap_stat(extra.mult)
+    extra.Xmult = rio_daronne_cap_stat(extra.Xmult)
+    extra.Xchips = rio_daronne_cap_stat(extra.Xchips)
+    extra.planet_chips = rio_daronne_cap_stat(extra.planet_chips)
+    extra.tarot_mult = rio_daronne_cap_stat(extra.tarot_mult)
+    extra.xmult_gain = rio_daronne_cap_stat(extra.xmult_gain)
+    extra.xchips_gain = rio_daronne_cap_stat(extra.xchips_gain)
+    extra.buff_scale = rio_daronne_cap_stat(extra.buff_scale)
 end
 
 local function rio_daronne_get_extra(card, joker)
@@ -225,13 +273,13 @@ local function rio_daronne_apply_consumable(card, consumed)
     local consumed_set = consumed.ability and consumed.ability.set or consumed.config.center.set
 
     if consumed_set == 'Planet' then
-        extra.chips = extra.chips + extra.planet_chips * extra.buff_scale
+        extra.chips = rio_daronne_cap_stat(extra.chips + extra.planet_chips * extra.buff_scale)
     elseif consumed_set == 'Tarot' then
-        extra.mult = extra.mult + extra.tarot_mult * extra.buff_scale
+        extra.mult = rio_daronne_cap_stat(extra.mult + extra.tarot_mult * extra.buff_scale)
     elseif consumed_set == 'Spectral' then
-        extra.Xmult = extra.Xmult + extra.xmult_gain * extra.buff_scale
+        extra.Xmult = rio_daronne_cap_stat(extra.Xmult + extra.xmult_gain * extra.buff_scale)
     else
-        extra.Xchips = extra.Xchips + extra.xchips_gain * extra.buff_scale
+        extra.Xchips = rio_daronne_cap_stat(extra.Xchips + extra.xchips_gain * extra.buff_scale)
     end
 
     extra.eaten_cards = (extra.eaten_cards or 0) + 1
@@ -257,11 +305,11 @@ end
 
 local function rio_daronne_double_buffs(card, eaten_joker)
     local extra = card.ability.extra
-    extra.buff_scale = extra.buff_scale * 2
-    extra.chips = extra.chips * 2
-    extra.mult = extra.mult * 2
-    extra.Xmult = 1 + (extra.Xmult - 1) * 2
-    extra.Xchips = 1 + (extra.Xchips - 1) * 2
+    extra.buff_scale = rio_daronne_cap_stat(extra.buff_scale * 2)
+    extra.chips = rio_daronne_cap_stat(extra.chips * 2)
+    extra.mult = rio_daronne_cap_stat(extra.mult * 2)
+    extra.Xmult = rio_daronne_cap_stat(1 + (extra.Xmult - 1) * 2)
+    extra.Xchips = rio_daronne_cap_stat(1 + (extra.Xchips - 1) * 2)
     extra.eaten_jokers = (extra.eaten_jokers or 0) + 1
     extra.dollar_bonus = (extra.dollar_bonus or 0) + rio_daronne_joker_money_gain(eaten_joker)
 end
@@ -421,7 +469,7 @@ end
 
 local function rio_daronne_safe_pow(v, p)
     if not v or v <= 0 then return v end
-    return v ^ p
+    return rio_daronne_cap_stat(v ^ p)
 end
 
 local function rio_daronne_self_destruct(card)
@@ -1039,18 +1087,19 @@ SMODS.Joker{
     loc_vars = function(self, info_queue, card)
         info_queue[#info_queue + 1] = {key = 'xmpl_daronne_grand_feast', set = 'Other'}
         local extra = rio_daronne_get_extra(card, self)
+        rio_daronne_cap_buffs(extra)
         local scale = extra.buff_scale or 1
         local money_gain = extra.money_per_hand_gain or 5
         return {vars = {
             extra.create_on_reroll,
             extra.eat_per_hand,
-            extra.planet_chips * scale,
-            extra.tarot_mult * scale,
-            rio_format_num(1 + extra.xmult_gain * scale),
-            rio_format_num(1 + extra.xchips_gain * scale),
+            rio_format_num(rio_daronne_cap_stat(extra.planet_chips * scale)),
+            rio_format_num(rio_daronne_cap_stat(extra.tarot_mult * scale)),
+            rio_format_num(rio_daronne_cap_stat(1 + extra.xmult_gain * scale)),
+            rio_format_num(rio_daronne_cap_stat(1 + extra.xchips_gain * scale)),
             rio_format_num(scale),
-            extra.chips,
-            extra.mult,
+            rio_format_num(extra.chips),
+            rio_format_num(extra.mult),
             rio_format_num(extra.Xmult),
             rio_format_num(extra.Xchips),
             extra.eaten_jokers or 0,
@@ -1076,6 +1125,7 @@ SMODS.Joker{
         rio_daronne_restore_slots(card)
     end,
     calculate = function(self, card, context)
+        rio_daronne_cap_buffs(card.ability.extra)
         if not context.buying_card then
             rio_daronne_reduce_slots(card)
             rio_daronne_update_ante(card)

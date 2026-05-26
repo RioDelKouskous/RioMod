@@ -2714,3 +2714,7 @@
 {"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"dialogue_line","timestamp":1779754941000,"data":{"runId":"post-fix-3","line":2}}
 {"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"dialogue_line","timestamp":1779754945000,"data":{"runId":"post-fix-3","line":3}}
 {"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"dialogue_line","timestamp":1779754950000,"data":{"runId":"post-fix-3","line":4}}
+{"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"intro_done","timestamp":1779754957000,"data":{"runId":"post-fix-3"}}
+{"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"eating_start","timestamp":1779754965000,"data":{"runId":"post-fix-3","candidates":173}}
+{"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"feast_cleanup","timestamp":1779754973000,"data":{"runId":"post-fix-3"}}
+{"sessionId":"dfab94","hypothesisId":"F","location":"jokers.lua:queue_grand_feast","message":"feast_cleanup","timestamp":1779755014000,"data":{"runId":"post-fix-3"}}
