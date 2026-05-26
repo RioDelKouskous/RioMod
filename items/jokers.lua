@@ -179,6 +179,13 @@ local function rio_daronne_cap_stat(value)
     return value
 end
 
+local function rio_daronne_stat_gt(value, threshold)
+    if type(value) == 'table' and rio_daronne_talisman_active() then
+        return value > to_big(threshold)
+    end
+    return value > threshold
+end
+
 local function rio_daronne_cap_buffs(extra)
     extra.chips = rio_daronne_cap_stat(extra.chips)
     extra.mult = rio_daronne_cap_stat(extra.mult)
@@ -468,7 +475,7 @@ local function count_consumables()
 end
 
 local function rio_daronne_safe_pow(v, p)
-    if not v or v <= 0 then return v end
+    if not v or not rio_daronne_stat_gt(v, 0) then return v end
     return rio_daronne_cap_stat(v ^ p)
 end
 
@@ -1238,19 +1245,19 @@ SMODS.Joker{
             local ret = {card = card}
             local has_effect = false
 
-            if extra.chips > 0 then
+            if rio_daronne_stat_gt(extra.chips, 0) then
                 ret.chips = extra.chips
                 has_effect = true
             end
-            if extra.mult > 0 then
+            if rio_daronne_stat_gt(extra.mult, 0) then
                 ret.mult = extra.mult
                 has_effect = true
             end
-            if extra.Xchips > 1 then
+            if rio_daronne_stat_gt(extra.Xchips, 1) then
                 ret.xchips = extra.Xchips
                 has_effect = true
             end
-            if extra.Xmult > 1 then
+            if rio_daronne_stat_gt(extra.Xmult, 1) then
                 ret.xmult = extra.Xmult
                 has_effect = true
             end
