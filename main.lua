@@ -87,7 +87,22 @@ SMODS.ScreenShader{
 
 SMODS.Shader{
     key = 'relief_3d',
-    path = 'relief_3d.fs'
+    path = 'relief_3d.fs',
+    send_vars = function(sprite, card)
+        local uv_off_y = 0.5
+        if sprite and sprite.texture then
+            local th = sprite.texture:getHeight()
+            local _, _, _, _, qh = sprite.quad:getViewport()
+            if th > 0 and qh > 0 then
+                uv_off_y = qh / th
+            end
+        end
+        
+        return {
+            tilt = (card and card.tilt_var) and {card.tilt_var.x * 0.4, card.tilt_var.y * 0.4} or {0, 0},
+            uv_offset = {0, uv_off_y}
+        }
+    end
 }
 
 local DARONNE_FEAST_BACKGROUND = {

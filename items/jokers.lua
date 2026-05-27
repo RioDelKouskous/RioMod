@@ -1562,7 +1562,7 @@ SMODS.Joker{
     end
 }
 
--- BigData Joker with 3D Relief Effect
+-- BigData Joker with 3D Relief Effect via shader
 SMODS.Joker{
     key = 'bigdata',
     atlas = 'bigdata_atlas',
@@ -1571,6 +1571,7 @@ SMODS.Joker{
     unlocked = true,
     discovered = true,
     blueprint_compat = true,
+    shader = 'relief_3d',
     pos = {x = 0, y = 0},
     config = {
         extra = {
@@ -1589,77 +1590,6 @@ SMODS.Joker{
                 chip_mod = card.ability.extra.chip_gain
             }
         end
-    end,
-    render = function(self, card, target_x, target_y, dims, draw_cooldown)
-        if not card then return end
-        
-        -- Get the atlas and sprite
-        local atlas_name = self.atlas
-        local atlas = SMODS.Atlases[atlas_name]
-        if not atlas then return end
-        
-        local sprite = atlas:get_obj(card)
-        if not sprite then return end
-        
-        -- Calculate card scale
-        local scale = dims.h / (sprite.h or 71)
-        local shadow_offset = 3 * scale
-        local shadow_layers = 4
-        
-        -- Push translation for card position
-        local rot = card.T.r or 0
-        love.graphics.push()
-        love.graphics.translate(target_x, target_y)
-        love.graphics.rotate(rot)
-        
-        -- Draw shadow layers for 3D depth effect
-        for i = shadow_layers, 1, -1 do
-            local shadow_depth = (shadow_layers - i + 1) * shadow_offset
-            local shadow_alpha = 0.15 - (i - 1) * 0.03
-            
-            -- Dark shadow layers
-            love.graphics.setColor(0, 0, 0, shadow_alpha)
-            love.graphics.draw(
-                sprite.image,
-                sprite.x + shadow_depth,
-                sprite.y + shadow_depth,
-                0,
-                scale,
-                scale
-            )
-        end
-        
-        -- Draw highlight layer (top-left shine for 3D effect)
-        love.graphics.setColor(1, 1, 1, 0.08)
-        love.graphics.draw(
-            sprite.image,
-            sprite.x - shadow_offset,
-            sprite.y - shadow_offset,
-            0,
-            scale,
-            scale
-        )
-        
-        -- Draw main card sprite
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.setShader(SMODS.Shaders.relief_3d or nil)
-        
-        if SMODS.Shaders.relief_3d then
-            SMODS.Shaders.relief_3d:send('strength', 1.0)
-            SMODS.Shaders.relief_3d:send('time', (love.timer.getTime() % 100))
-        end
-        
-        love.graphics.draw(
-            sprite.image,
-            sprite.x,
-            sprite.y,
-            0,
-            scale,
-            scale
-        )
-        
-        love.graphics.setShader()
-        love.graphics.pop()
     end
 }
 
