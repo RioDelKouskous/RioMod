@@ -415,16 +415,17 @@ local function rio_daronne_queue_eat_adjacent_jokers(card)
 end
 
 local function rio_daronne_eat_consumables(card)
-    if not G.consumeables or not G.consumeables.cards then return 0 end
+    if not G.consumeables or not G.consumeables.cards then return 0, 0 end
 
     local candidates = {}
     for _, consumable in ipairs(G.consumeables.cards) do
-        if consumable.ability and consumable.ability.consumeable and not consumable.getting_sliced and not consumable.destroyed then
+        if rio_daronne_is_consumable(consumable) then
             candidates[#candidates + 1] = consumable
         end
     end
 
     local eaten = 0
+    local available = #candidates
     local extra = card.ability.extra
     for i = 1, math.min(extra.eat_per_hand, #candidates) do
         local consumed = pseudorandom_element(candidates, pseudoseed('daronne_vexpi_eat' .. (extra.eaten_cards or 0) .. '_' .. i))
@@ -444,7 +445,7 @@ local function rio_daronne_eat_consumables(card)
         rio_daronne_chomp(card, G.C.FILTER)
     end
 
-    return eaten
+    return eaten, available
 end
 
 local function rio_daronne_update_ante(card)
@@ -474,6 +475,23 @@ local function count_consumables()
     return count
 end
 
+local function rio_daronne_after_hand_key()
+    if not G.GAME then return nil end
+    local round = G.GAME.current_round or {}
+    local blind = G.GAME.blind or {}
+    local blind_name = blind.name or blind.config and blind.config.blind and blind.config.blind.key or ''
+    local hands_played = round.hands_played
+        or G.GAME.round_scores and G.GAME.round_scores.hands_played and G.GAME.round_scores.hands_played.amt
+        or G.GAME.round_scores and G.GAME.round_scores.hands and G.GAME.round_scores.hands.amt
+        or ''
+    return table.concat({
+        G.GAME.round_resets and G.GAME.round_resets.ante or '',
+        blind_name,
+        hands_played,
+        G.GAME.current_round and G.GAME.current_round.hands_left or ''
+    }, ':')
+end
+
 local function rio_daronne_safe_pow(v, p)
     if not v or not rio_daronne_stat_gt(v, 0) then return v end
     return rio_daronne_cap_stat(v ^ p)
@@ -500,10 +518,10 @@ local function rio_daronne_self_destruct(card)
     end
 end
 
-local function rio_daronne_check_hunger(card, eaten)
+local function rio_daronne_check_hunger(card, eaten, available)
     if not rio_daronne_card_alive(card) then return end
     local extra = card.ability.extra
-    if eaten >= (extra.eat_per_hand or 0) then
+    if eaten >= (extra.eat_per_hand or 0) or available >= (extra.eat_per_hand or 0) then
         extra.hungry_rounds = 0
         return
     end
@@ -1120,11 +1138,15 @@ SMODS.Joker{
     end,
     add_to_deck = function(self, card, from_debuff)
         rio_daronne_reduce_slots(card)
+        if from_debuff and card and card.ability and card.ability.extra and card.ability.extra.feast_world_active then
+            rio_daronne_start_feast_world()
+        end
         if rio_daronne_is_heaviest_deck_run() then
             rio_daronne_set_absolute(card, true)
         end
     end,
     remove_from_deck = function(self, card, from_debuff)
+        if from_debuff then return end
         if card and card.ability and card.ability.extra and card.ability.extra.feast_world_active then
             rio_daronne_clear_feast_world()
             card.ability.extra.feast_world_active = nil
@@ -1133,6 +1155,10 @@ SMODS.Joker{
     end,
     calculate = function(self, card, context)
         rio_daronne_cap_buffs(card.ability.extra)
+        if card.ability.extra.feast_world_active and G.GAME
+            and (not G.GAME.xmpl_daronne_music_active or not G.GAME.xmpl_daronne_bg_lock) then
+            rio_daronne_start_feast_world()
+        end
         if not context.buying_card then
             rio_daronne_reduce_slots(card)
             rio_daronne_update_ante(card)
@@ -1174,13 +1200,17 @@ SMODS.Joker{
             end
 
             if context.after then
-                local eaten = rio_daronne_eat_consumables(card)
-                rio_daronne_check_hunger(card, eaten)
-                if eaten > 0 then
-                    return {
-                        message = localize('k_xmpl_daronne_ate'),
-                        colour = G.C.FILTER
-                    }
+                local after_hand_key = rio_daronne_after_hand_key()
+                if after_hand_key ~= card.ability.extra.last_after_hand_key then
+                    card.ability.extra.last_after_hand_key = after_hand_key
+                    local eaten, available = rio_daronne_eat_consumables(card)
+                    rio_daronne_check_hunger(card, eaten, available)
+                    if eaten > 0 then
+                        return {
+                            message = localize('k_xmpl_daronne_ate'),
+                            colour = G.C.FILTER
+                        }
+                    end
                 end
             end
 
