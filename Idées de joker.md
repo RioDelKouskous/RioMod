@@ -114,6 +114,14 @@
 
 ## Benjamin cette grosse merde
 
+## Killer Fish From San Diego
+**Effets :**
+- Des que le joker s'active, une des voicelines du killer fish se lance (a mettre dans un folder assets quelque part, faut vrm just research "killer fish from san diego sur youtube)
+
+## Markiplier
+**Effets :**
+- Donne +87 chips OU a 1/4 chance de give +87 mult
+
 # Decks
 
 ## Temperature deck
