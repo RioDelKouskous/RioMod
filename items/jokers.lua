@@ -42,6 +42,12 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
+SMODS.Atlas{
+    key = 'perfect_middle_atlas',
+    path = 'perfectmiddle.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -66,7 +72,9 @@ end
 local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
 local MAY_KEY = 'j_xmpl_may'
 local COLD_CARREFOUR_KEY = 'j_xmpl_cold_carrefour'
+local PERFECT_MIDDLE_KEY = 'j_xmpl_perfect_middle'
 local HEAVIEST_DECK_KEY = 'b_xmpl_heaviest_deck'
+local TEMPERATURE_DECK_KEY = 'b_xmpl_temperature_deck'
 local CRYPTID_ABSOLUTE_STICKER = 'cry_absolute'
 local WEATHER_DEFAULT_SETTINGS = {
     music = true,
@@ -76,6 +84,9 @@ local WEATHER_DEFAULT_SETTINGS = {
 }
 local WEATHER_MIN_X = 0.01
 local WEATHER_DURATION = 150
+local TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION = 180
+local TEMPERATURE_DECK_WEATHER_MULT = 2
+local TEMPERATURE_DECK_WEATHER_SHOP_CHANCE = 0.35
 local DARONNE_VEXPI_WORDS = {
     'Yummy!',
     'Delicious!',
@@ -630,6 +641,17 @@ local function rio_daronne_is_heaviest_deck_run()
         or selected_key == 'Paquet le plus lourd' or viewed_key == 'Paquet le plus lourd'
 end
 
+local function rio_is_temperature_deck_run()
+    if not G.GAME then return false end
+
+    local selected_key = rio_daronne_back_key(G.GAME.selected_back)
+    local viewed_key = rio_daronne_back_key(G.GAME.viewed_back)
+    return selected_key == TEMPERATURE_DECK_KEY or viewed_key == TEMPERATURE_DECK_KEY
+        or selected_key == 'temperature_deck' or viewed_key == 'temperature_deck'
+        or selected_key == 'Temperature Deck' or viewed_key == 'Temperature Deck'
+        or selected_key == 'Deck Temperature' or viewed_key == 'Deck Temperature'
+end
+
 local function rio_daronne_feast_conditions(bought)
     -- #region agent log
     rio_debug_log('C', 'jokers.lua:feast_conditions', 'feast_conditions_enter', {
@@ -1004,12 +1026,13 @@ end
 ------------ WEATHER JOKER HELPERS -----------
 
 local function rio_weather_is_key(key)
-    return key == MAY_KEY or key == COLD_CARREFOUR_KEY
+    return key == MAY_KEY or key == COLD_CARREFOUR_KEY or key == PERFECT_MIDDLE_KEY
 end
 
 local function rio_weather_kind_from_key(key)
     if key == MAY_KEY then return 'may' end
     if key == COLD_CARREFOUR_KEY then return 'cold_carrefour' end
+    if key == PERFECT_MIDDLE_KEY then return 'perfect_middle' end
 end
 
 local function rio_weather_center_key(card)
@@ -1067,7 +1090,7 @@ local function rio_weather_apply_world(card)
     local kind = rio_weather_kind_from_key(rio_weather_center_key(card))
     local extra = rio_weather_init_card(card, kind)
     local settings = rio_weather_ensure_settings(extra)
-    local speed = kind == 'cold_carrefour' and 16 or 4
+    local speed = kind == 'cold_carrefour' and 16 or kind == 'perfect_middle' and 8 or 4
 
     if settings.music then G.GAME.xmpl_weather_music = kind end
     if settings.background then G.GAME.xmpl_weather_background = kind end
@@ -1093,6 +1116,9 @@ local function rio_weather_transform(card, target_key)
     card.sticker_run = old_sticker_run
     card.seal = old_seal
     card.edition = old_edition
+    if target_key == MAY_KEY and rio_is_temperature_deck_run() then
+        rio_daronne_set_absolute(card, true)
+    end
     card:juice_up(0.4, 0.4)
     SMODS.previous_track = nil
 end
@@ -1117,7 +1143,48 @@ local function rio_weather_tick_card(card, dt)
         if extra.elapsed >= WEATHER_DURATION then
             rio_weather_transform(card, MAY_KEY)
         end
+    elseif kind == 'perfect_middle' then
+        extra.Xmult = math.max((extra.Xmult or 2) + 0.02 * dt, WEATHER_MIN_X)
+        extra.Xchips = math.max((extra.Xchips or 2) + 0.02 * dt, WEATHER_MIN_X)
+        if rio_is_temperature_deck_run() and extra.elapsed >= TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION then
+            rio_weather_transform(card, MAY_KEY)
+        end
     end
+end
+
+local function rio_weather_try_fuse()
+    if not (G and G.jokers and G.jokers.cards and G.P_CENTERS and G.P_CENTERS[PERFECT_MIDDLE_KEY]) then return end
+    local may, cold
+    for _, card in ipairs(G.jokers.cards) do
+        local key = rio_weather_center_key(card)
+        if card.added_to_deck and not card.getting_sliced and not card.destroyed then
+            if key == PERFECT_MIDDLE_KEY then return end
+            if key == MAY_KEY then may = may or card end
+            if key == COLD_CARREFOUR_KEY then cold = cold or card end
+        end
+    end
+    if not (may and cold) then return end
+
+    local may_extra = rio_weather_init_card(may, 'may')
+    local cold_extra = rio_weather_init_card(cold, 'cold_carrefour')
+    local merged_settings = copy_table(may_extra.settings or cold_extra.settings or WEATHER_DEFAULT_SETTINGS)
+    local merged_extra = {
+        Xmult = math.max(may_extra.Xmult or 2, cold_extra.Xmult or 2),
+        Xchips = math.max(may_extra.Xchips or 2, cold_extra.Xchips or 2),
+        elapsed = 0,
+        weather_kind = 'perfect_middle',
+        weather_initialized = true,
+        settings = merged_settings
+    }
+    rio_weather_ensure_settings(merged_extra)
+
+    may:set_ability(G.P_CENTERS[PERFECT_MIDDLE_KEY], nil, true)
+    may.ability.extra = merged_extra
+    G.P_CENTERS[PERFECT_MIDDLE_KEY].discovered = true
+    may:juice_up(0.8, 0.8)
+    cold.getting_sliced = true
+    SMODS.destroy_cards(cold, true)
+    SMODS.previous_track = nil
 end
 
 local function rio_weather_choose_active()
@@ -1134,6 +1201,7 @@ end
 
 function XMP_WEATHER_REFRESH(dt)
     if not (G and G.GAME) then return end
+    rio_weather_try_fuse()
     if G.jokers and G.jokers.cards then
         for _, card in ipairs(G.jokers.cards) do
             if rio_weather_is_key(rio_weather_center_key(card)) and card.added_to_deck
@@ -1147,15 +1215,24 @@ end
 
 local function rio_weather_loc_vars(self, info_queue, card)
     local extra = card and rio_weather_get_extra(card) or self.config.extra
-    return {vars = {0, 0, 0, 0, rio_format_num(extra.Xmult or 2), rio_format_num(extra.Xchips or 2)}}
+    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
+    return {vars = {
+        0,
+        0,
+        0,
+        0,
+        rio_format_num((extra.Xmult or 2) * weather_mult),
+        rio_format_num((extra.Xchips or 2) * weather_mult)
+    }}
 end
 
 local function rio_weather_score(card)
     local extra = rio_weather_get_extra(card)
+    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
     return {
         card = card,
-        xmult = extra.Xmult,
-        xchips = extra.Xchips
+        xmult = extra.Xmult * weather_mult,
+        xchips = extra.Xchips * weather_mult
     }
 end
 
@@ -1187,6 +1264,11 @@ G.FUNCS.j_xmpl_cold_carrefour_settings = function(e)
     G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
 end
 
+G.FUNCS.j_xmpl_perfect_middle_settings = function(e)
+    G.SETTINGS.paused = true
+    G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
+end
+
 ----------------------------------------------
 ------------ JOKER DEFINITIONS ---------------
 
@@ -1204,6 +1286,9 @@ SMODS.Joker{
     loc_vars = rio_weather_loc_vars,
     add_to_deck = function(self, card, from_debuff)
         rio_weather_init_card(card, 'may')
+        if rio_is_temperature_deck_run() then
+            rio_daronne_set_absolute(card, true)
+        end
         rio_weather_apply_world(card)
     end,
     remove_from_deck = function(self, card, from_debuff)
@@ -1236,6 +1321,37 @@ SMODS.Joker{
     end,
     calculate = function(self, card, context)
         rio_weather_init_card(card, 'cold_carrefour')
+        if context.joker_main then return rio_weather_score(card) end
+    end
+}
+
+SMODS.Joker{
+    key = 'perfect_middle',
+    atlas = 'perfect_middle_atlas',
+    rarity = 4,
+    cost = 20,
+    unlocked = true,
+    discovered = false,
+    blueprint_compat = true,
+    eternal_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { Xmult = 2, Xchips = 2, elapsed = 0, weather_kind = 'perfect_middle' } },
+    in_pool = function(self, args)
+        return false
+    end,
+    loc_vars = rio_weather_loc_vars,
+    add_to_deck = function(self, card, from_debuff)
+        if G and G.P_CENTERS and G.P_CENTERS[PERFECT_MIDDLE_KEY] then
+            G.P_CENTERS[PERFECT_MIDDLE_KEY].discovered = true
+        end
+        rio_weather_init_card(card, 'perfect_middle')
+        rio_weather_apply_world(card)
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        if rio_weather_choose_active() == card then rio_weather_clear_world() end
+    end,
+    calculate = function(self, card, context)
+        rio_weather_init_card(card, 'perfect_middle')
         if context.joker_main then return rio_weather_score(card) end
     end
 }
@@ -1649,6 +1765,15 @@ local function rio_daronne_make_negative(card)
     end
 end
 
+local function rio_temperature_weather_shop_key(seed_suffix)
+    if not rio_is_temperature_deck_run() then return nil end
+    if pseudorandom('temperature_deck_weather_' .. tostring(seed_suffix or 'shop')) > TEMPERATURE_DECK_WEATHER_SHOP_CHANCE then
+        return nil
+    end
+    return pseudorandom('temperature_deck_weather_pick_' .. tostring(seed_suffix or 'shop')) < 0.5
+        and MAY_KEY or COLD_CARREFOUR_KEY
+end
+
 rio_daronne_apply_shop_negative = function()
     if not (count_consumables() >= 10 and has_daronne_vexpi()) then return end
     if G.shop_jokers then
@@ -1675,6 +1800,9 @@ function create_card(_type, area, legendary, _rarity, skip_materialize, soulable
     if G and G.GAME and G.GAME.xmpl_daronne_force_soul_legendary and _type == 'Joker' and area == G.jokers then
         legendary = true
     end
+    if not forced_key and _type == 'Joker' and G and (area == G.pack_cards or area == G.shop_jokers) then
+        forced_key = rio_temperature_weather_shop_key(key_append or _type)
+    end
     local card = original_create_card(_type, area, legendary, _rarity, skip_materialize, soulable, forced_key, key_append)
     if card and G and area == G.pack_cards and count_consumables() >= 10 and has_daronne_vexpi()
         and card.config and card.config.center and card.config.center.set == 'Joker' then
@@ -1686,6 +1814,12 @@ end
 local original_create_card_for_shop = create_card_for_shop
 function create_card_for_shop(area)
     local card = original_create_card_for_shop(area)
+    if card and card.config and card.config.center and card.config.center.set == 'Joker' then
+        local weather_key = rio_temperature_weather_shop_key(card.config.center.key or 'shop')
+        if weather_key and G and G.P_CENTERS and G.P_CENTERS[weather_key] then
+            card:set_ability(G.P_CENTERS[weather_key], nil, true)
+        end
+    end
     if card and count_consumables() >= 10 and has_daronne_vexpi() then
         if card.config and card.config.center then
             local s = card.config.center.set
@@ -1703,6 +1837,10 @@ if CardArea and CardArea.emplace then
         local ret = original_cardarea_emplace(self, card, ...)
         if G and self == G.jokers and card and card.config and card.config.center
             and card.config.center.key == DARONNE_VEXPI_KEY and rio_daronne_is_heaviest_deck_run() then
+            rio_daronne_set_absolute(card, true)
+        end
+        if G and self == G.jokers and card and card.config and card.config.center
+            and card.config.center.key == MAY_KEY and rio_is_temperature_deck_run() then
             rio_daronne_set_absolute(card, true)
         end
         if G and (self == G.consumeables or self == G.shop_jokers or self == G.shop_booster or self == G.pack_cards) then

@@ -4,7 +4,7 @@
 --- MOD_AUTHOR: [RioSkai, Suiveurtag]
 --- MOD_DESCRIPTION: Cool mod yeah yeah.
 --- PREFIX: xmpl
---- DEPENDENCIES: [Cryptid, LuckyRabbit]
+--- DEPENDENCIES: [Cryptid]
 ----------------------------------------------
 ------------ ATLAS DEFINITIONS ---------------
 
@@ -55,6 +55,19 @@ SMODS.Sound{
     end
 }
 
+SMODS.Sound{
+    key = 'music_perfect_middle',
+    path = 'sm64swimswim.ogg',
+    sync = false,
+    pitch = 1,
+    volume = 0.8,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_weather_music == 'perfect_middle' and not G.GAME.xmpl_daronne_music_active then
+            return 900000
+        end
+    end
+}
+
 SMODS.ScreenShader{
     key = 'weather_heat',
     path = 'weather_heat.fs',
@@ -66,6 +79,21 @@ SMODS.ScreenShader{
     end,
     should_apply = function()
         return G and G.GAME and G.GAME.xmpl_weather_shader == 'may'
+            and not G.GAME.xmpl_daronne_bg_lock
+    end
+}
+
+SMODS.ScreenShader{
+    key = 'weather_middle',
+    path = 'weather_middle.fs',
+    send_vars = function()
+        return {
+            time = G and G.TIMERS and G.TIMERS.REAL or 0,
+            strength = 1
+        }
+    end,
+    should_apply = function()
+        return G and G.GAME and G.GAME.xmpl_weather_shader == 'perfect_middle'
             and not G.GAME.xmpl_daronne_bg_lock
     end
 }
@@ -148,6 +176,12 @@ local WEATHER_BACKGROUNDS = {
         C = HEX('d6f4ff'),
         D = HEX('18537a'),
         contrast = 2.1
+    },
+    perfect_middle = {
+        L = HEX('ffd37a'),
+        C = HEX('b9f8ff'),
+        D = HEX('4a8fbd'),
+        contrast = 2.35
     }
 }
 
