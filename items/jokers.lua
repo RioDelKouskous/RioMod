@@ -1572,7 +1572,8 @@ SMODS.Joker{
     discovered = true,
     blueprint_compat = true,
     shader = 'relief_3d',
-    pos = {x = 0, y = 0},
+    pos = {x=0, y= 0},
+    soul_pos = { x = 0, y = 1 },
     config = {
         extra = {
             xmult = 1.5,
