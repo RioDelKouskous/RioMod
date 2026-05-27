@@ -59,6 +59,14 @@ return {
                     '{C:red,E:2}Self-destructs{} in {C:attention}#2#{} hands.'
                 }
             },
+            j_xmpl_bigdata = {
+                name = 'BigData',
+                text = {
+                    'Gives {X:mult,C:white}X#1#{} Mult',
+                    'and {C:chips}+#2#{} Chips',
+                    '{C:inactive}(Data visualization with 3D relief){}',
+                }
+            },
             j_xmpl_daronne_vexpi = {
                 name = "Vexpi's Mother",
                 text = {

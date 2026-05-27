@@ -85,6 +85,10 @@ SMODS.ScreenShader{
     end
 }
 
+SMODS.Shader{
+    key = 'relief_3d',
+    path = 'relief_3d.fs'
+}
 
 local DARONNE_FEAST_BACKGROUND = {
     HEX('ff2a6d'),

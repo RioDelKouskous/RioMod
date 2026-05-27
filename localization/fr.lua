@@ -59,6 +59,14 @@ return {
                     "{C:red,E:2}S'autodétruit{} dans {C:attention}#2#{} mains."
                 }
             },
+            j_xmpl_bigdata = {
+                name = 'BigData',
+                text = {
+                    'Donne {X:mult,C:white}X#1#{} Multi',
+                    'et {C:chips}+#2#{} Jetons',
+                    '{C:inactive}(Visualisation de données avec relief 3D){}',
+                }
+            },
             j_xmpl_daronne_vexpi = {
                 name = 'La daronne a vexpi',
                 text = {
