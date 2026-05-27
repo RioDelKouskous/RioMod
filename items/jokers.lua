@@ -24,6 +24,18 @@ SMODS.Atlas{
     px = 150, py = 95
 }
 
+SMODS.Atlas{
+    key = 'may_atlas',
+    path = 'may.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
+    key = 'cold_carrefour_atlas',
+    path = 'coldcarrefour.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -46,8 +58,18 @@ for _, key in ipairs(DARONNE_VEXPI_SOUND_KEYS) do
 end
 
 local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
+local MAY_KEY = 'j_xmpl_may'
+local COLD_CARREFOUR_KEY = 'j_xmpl_cold_carrefour'
 local HEAVIEST_DECK_KEY = 'b_xmpl_heaviest_deck'
 local CRYPTID_ABSOLUTE_STICKER = 'cry_absolute'
+local WEATHER_DEFAULT_SETTINGS = {
+    music = true,
+    speed = true,
+    background = true,
+    shader = true
+}
+local WEATHER_MIN_X = 0.01
+local WEATHER_DURATION = 150
 local DARONNE_VEXPI_WORDS = {
     'Yummy!',
     'Delicious!',
@@ -973,7 +995,244 @@ rio_daronne_queue_grand_feast = function(card)
 end
 
 ----------------------------------------------
+------------ WEATHER JOKER HELPERS -----------
+
+local function rio_weather_is_key(key)
+    return key == MAY_KEY or key == COLD_CARREFOUR_KEY
+end
+
+local function rio_weather_kind_from_key(key)
+    if key == MAY_KEY then return 'may' end
+    if key == COLD_CARREFOUR_KEY then return 'cold_carrefour' end
+end
+
+local function rio_weather_center_key(card)
+    return card and card.config and card.config.center and card.config.center.key
+end
+
+local function rio_weather_get_extra(card)
+    card.ability = card.ability or {}
+    card.ability.extra = card.ability.extra or {}
+    return card.ability.extra
+end
+
+local function rio_weather_ensure_settings(extra)
+    extra.settings = extra.settings or {}
+    for key, value in pairs(WEATHER_DEFAULT_SETTINGS) do
+        if extra.settings[key] == nil then extra.settings[key] = value end
+    end
+    return extra.settings
+end
+
+local function rio_weather_init_card(card, kind)
+    local extra = rio_weather_get_extra(card)
+    if extra.weather_initialized then
+        rio_weather_ensure_settings(extra)
+        return extra
+    end
+    extra.Xmult = extra.Xmult or 2
+    extra.Xchips = extra.Xchips or 2
+    extra.elapsed = extra.elapsed or 0
+    extra.weather_kind = kind
+    extra.weather_initialized = true
+    rio_weather_ensure_settings(extra)
+    return extra
+end
+
+local function rio_weather_can_apply_world()
+    return G and G.GAME and not G.GAME.xmpl_daronne_music_active and not G.GAME.xmpl_daronne_bg_lock
+end
+
+local function rio_weather_clear_world()
+    if not (G and G.GAME) then return end
+    G.GAME.xmpl_weather_music = nil
+    G.GAME.xmpl_weather_background = nil
+    G.GAME.xmpl_weather_shader = nil
+    G.GAME.xmpl_weather_speed = nil
+end
+
+local function rio_weather_apply_world(card)
+    if not (G and G.GAME) then return end
+    rio_weather_clear_world()
+    if not (card and card.added_to_deck and not card.getting_sliced and not card.destroyed and rio_weather_can_apply_world()) then
+        return
+    end
+
+    local kind = rio_weather_kind_from_key(rio_weather_center_key(card))
+    local extra = rio_weather_init_card(card, kind)
+    local settings = rio_weather_ensure_settings(extra)
+    local speed = kind == 'cold_carrefour' and 16 or 4
+
+    if settings.music then G.GAME.xmpl_weather_music = kind end
+    if settings.background then G.GAME.xmpl_weather_background = kind end
+    if settings.shader then G.GAME.xmpl_weather_shader = kind end
+    if settings.speed then G.GAME.xmpl_weather_speed = speed end
+end
+
+local function rio_weather_transform(card, target_key)
+    if not (card and G and G.P_CENTERS and G.P_CENTERS[target_key]) then return end
+    local old_extra = copy_table(rio_weather_get_extra(card))
+    local old_sticker = card.sticker
+    local old_sticker_run = card.sticker_run
+    local old_seal = card.seal
+    local old_edition = card.edition and copy_table(card.edition) or nil
+    old_extra.elapsed = math.max((old_extra.elapsed or WEATHER_DURATION) - WEATHER_DURATION, 0)
+    old_extra.weather_kind = rio_weather_kind_from_key(target_key)
+    old_extra.weather_initialized = true
+    rio_weather_ensure_settings(old_extra)
+
+    card:set_ability(G.P_CENTERS[target_key], nil, true)
+    card.ability.extra = old_extra
+    card.sticker = old_sticker
+    card.sticker_run = old_sticker_run
+    card.seal = old_seal
+    card.edition = old_edition
+    card:juice_up(0.4, 0.4)
+    SMODS.previous_track = nil
+end
+
+local function rio_weather_tick_card(card, dt)
+    local key = rio_weather_center_key(card)
+    if not rio_weather_is_key(key) then return end
+    local kind = rio_weather_kind_from_key(key)
+    local extra = rio_weather_init_card(card, kind)
+
+    dt = math.max(dt or 0, 0)
+    extra.elapsed = (extra.elapsed or 0) + dt
+    if kind == 'may' then
+        extra.Xmult = math.max((extra.Xmult or 2) - 0.003 * dt, WEATHER_MIN_X)
+        extra.Xchips = math.max((extra.Xchips or 2) + 0.02 * dt, WEATHER_MIN_X)
+        if extra.elapsed >= WEATHER_DURATION then
+            rio_weather_transform(card, COLD_CARREFOUR_KEY)
+        end
+    elseif kind == 'cold_carrefour' then
+        extra.Xchips = math.max((extra.Xchips or 2) - 0.003 * dt, WEATHER_MIN_X)
+        extra.Xmult = math.max((extra.Xmult or 2) + 0.02 * dt, WEATHER_MIN_X)
+        if extra.elapsed >= WEATHER_DURATION then
+            rio_weather_transform(card, MAY_KEY)
+        end
+    end
+end
+
+local function rio_weather_choose_active()
+    if not (G and G.jokers and G.jokers.cards) then return nil end
+    local active
+    for _, card in ipairs(G.jokers.cards) do
+        if rio_weather_is_key(rio_weather_center_key(card))
+            and card.added_to_deck and not card.getting_sliced and not card.destroyed then
+            active = card
+        end
+    end
+    return active
+end
+
+function XMP_WEATHER_REFRESH(dt)
+    if not (G and G.GAME) then return end
+    if G.jokers and G.jokers.cards then
+        for _, card in ipairs(G.jokers.cards) do
+            if rio_weather_is_key(rio_weather_center_key(card)) and card.added_to_deck
+                and not card.getting_sliced and not card.destroyed then
+                rio_weather_tick_card(card, dt)
+            end
+        end
+    end
+    rio_weather_apply_world(rio_weather_choose_active())
+end
+
+local function rio_weather_loc_vars(self, info_queue, card)
+    local extra = card and rio_weather_get_extra(card) or self.config.extra
+    return {vars = {0, 0, 0, 0, rio_format_num(extra.Xmult or 2), rio_format_num(extra.Xchips or 2)}}
+end
+
+local function rio_weather_score(card)
+    local extra = rio_weather_get_extra(card)
+    return {
+        card = card,
+        xmult = extra.Xmult,
+        xchips = extra.Xchips
+    }
+end
+
+function XMP_WEATHER_SETTINGS_UI(card)
+    local extra = rio_weather_get_extra(card)
+    local settings = rio_weather_ensure_settings(extra)
+    local name = localize{type = 'name_text', set = 'Joker', key = rio_weather_center_key(card)}
+    return create_UIBox_generic_options({
+        back_func = 'exit_overlay_menu',
+        contents = {
+            {n=G.UIT.R, config={align = 'cm', padding = 0.05}, nodes={
+                {n=G.UIT.T, config={text = name, scale = 0.55, colour = G.C.UI.TEXT_LIGHT, shadow = true}}
+            }},
+            create_toggle({label = localize('k_xmpl_weather_music'), ref_table = settings, ref_value = 'music'}),
+            create_toggle({label = localize('k_xmpl_weather_speed'), ref_table = settings, ref_value = 'speed'}),
+            create_toggle({label = localize('k_xmpl_weather_background'), ref_table = settings, ref_value = 'background'}),
+            create_toggle({label = localize('k_xmpl_weather_shader'), ref_table = settings, ref_value = 'shader'})
+        }
+    })
+end
+
+G.FUNCS.j_xmpl_may_settings = function(e)
+    G.SETTINGS.paused = true
+    G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
+end
+
+G.FUNCS.j_xmpl_cold_carrefour_settings = function(e)
+    G.SETTINGS.paused = true
+    G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
+end
+
+----------------------------------------------
 ------------ JOKER DEFINITIONS ---------------
+
+SMODS.Joker{
+    key = 'may',
+    atlas = 'may_atlas',
+    rarity = 3,
+    cost = 9,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    eternal_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { Xmult = 2, Xchips = 2, elapsed = 0, weather_kind = 'may' } },
+    loc_vars = rio_weather_loc_vars,
+    add_to_deck = function(self, card, from_debuff)
+        rio_weather_init_card(card, 'may')
+        rio_weather_apply_world(card)
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        if rio_weather_choose_active() == card then rio_weather_clear_world() end
+    end,
+    calculate = function(self, card, context)
+        rio_weather_init_card(card, 'may')
+        if context.joker_main then return rio_weather_score(card) end
+    end
+}
+
+SMODS.Joker{
+    key = 'cold_carrefour',
+    atlas = 'cold_carrefour_atlas',
+    rarity = 3,
+    cost = 9,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    eternal_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { Xmult = 2, Xchips = 2, elapsed = 0, weather_kind = 'cold_carrefour' } },
+    loc_vars = rio_weather_loc_vars,
+    add_to_deck = function(self, card, from_debuff)
+        rio_weather_init_card(card, 'cold_carrefour')
+        rio_weather_apply_world(card)
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        if rio_weather_choose_active() == card then rio_weather_clear_world() end
+    end,
+    calculate = function(self, card, context)
+        rio_weather_init_card(card, 'cold_carrefour')
+        if context.joker_main then return rio_weather_score(card) end
+    end
+}
 
 SMODS.Joker{
     key = 'derek',

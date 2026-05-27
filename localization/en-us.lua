@@ -19,6 +19,22 @@ return {
             }
         },
         Joker = {
+            j_xmpl_may = {
+                name = 'May',
+                text = {
+                    '{C:inactive}Weather in may for absolute no reason{}',
+                    'Make your game {C:attention}feels like{} this {C:money}damn month{}',
+                    '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
+                }
+            },
+            j_xmpl_cold_carrefour = {
+                name = 'Cold Carrefour',
+                text = {
+                    '{C:blue,E:2}Fr{}{C:inactive,E:2}en{}{C:red,E:2}ch{} {C:inactive}oasis replacement in a hot may{}',
+                    'Make your game feels nice and cold',
+                    '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
+                }
+            },
             j_xmpl_derek = {
                 name = 'Derek',
                 text = {
@@ -117,7 +133,11 @@ return {
             k_xmpl_daronne_feast_line_1 = 'Finally, I can unleash my real power',
             k_xmpl_daronne_feast_line_2 = "I'M HUNGRY MORE THAN EVER",
             k_xmpl_daronne_feast_line_3 = "I'M GONNA EAT THE WHOLE DAMN UNIVERSE",
-            k_xmpl_daronne_feast_line_4 = 'BEHOLD! THE POWER OF AN ANGEL'
+            k_xmpl_daronne_feast_line_4 = 'BEHOLD! THE POWER OF AN ANGEL',
+            k_xmpl_weather_music = 'Music',
+            k_xmpl_weather_speed = 'Forced speed',
+            k_xmpl_weather_background = 'Background',
+            k_xmpl_weather_shader = 'Shader / overlay'
         }
     }
 }

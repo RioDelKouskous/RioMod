@@ -4,7 +4,7 @@
 --- MOD_AUTHOR: [RioSkai, Suiveurtag]
 --- MOD_DESCRIPTION: Cool mod yeah yeah.
 --- PREFIX: xmpl
---- DEPENDENCIES: [Cryptid]
+--- DEPENDENCIES: [Cryptid, LuckyRabbit]
 ----------------------------------------------
 ------------ ATLAS DEFINITIONS ---------------
 
@@ -26,6 +26,62 @@ SMODS.Sound{
         if G and G.GAME and G.GAME.xmpl_daronne_music_active then
             return 1000000
         end
+    end
+}
+
+SMODS.Sound{
+    key = 'music_may_lava',
+    path = 'sm64lethallava.ogg',
+    sync = false,
+    pitch = 1,
+    volume = 0.8,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_weather_music == 'may' and not G.GAME.xmpl_daronne_music_active then
+            return 900000
+        end
+    end
+}
+
+SMODS.Sound{
+    key = 'music_cold_carrefour',
+    path = 'sm64coolcool.ogg',
+    sync = false,
+    pitch = 1,
+    volume = 0.8,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_weather_music == 'cold_carrefour' and not G.GAME.xmpl_daronne_music_active then
+            return 900000
+        end
+    end
+}
+
+SMODS.ScreenShader{
+    key = 'weather_heat',
+    path = 'weather_heat.fs',
+    send_vars = function()
+        return {
+            time = G and G.TIMERS and G.TIMERS.REAL or 0,
+            strength = 1
+        }
+    end,
+    should_apply = function()
+        return G and G.GAME and G.GAME.xmpl_weather_shader == 'may'
+            and not G.GAME.xmpl_daronne_bg_lock
+    end
+}
+
+SMODS.ScreenShader{
+    key = 'weather_cold',
+    path = 'weather_cold.fs',
+    send_vars = function()
+        return {
+            time = G and G.TIMERS and G.TIMERS.REAL or 0,
+            strength = 1
+        }
+    end,
+    should_apply = function()
+        return G and G.GAME and G.GAME.xmpl_weather_shader == 'cold_carrefour'
+            and not G.GAME.xmpl_daronne_bg_lock
     end
 }
 
@@ -61,6 +117,36 @@ local function rio_daronne_background_colour(index, still)
     }
 end
 
+local WEATHER_BACKGROUNDS = {
+    may = {
+        L = HEX('ff7a1a'),
+        C = HEX('ffb347'),
+        D = HEX('7a2100'),
+        contrast = 2.2
+    },
+    cold_carrefour = {
+        L = HEX('87ceeb'),
+        C = HEX('d6f4ff'),
+        D = HEX('18537a'),
+        contrast = 2.1
+    }
+}
+
+function XMP_WEATHER_APPLY_BACKGROUND()
+    if not (G and G.GAME and G.C and G.C.BACKGROUND) then return end
+    if G.GAME.xmpl_daronne_bg_lock then return end
+    local cfg = WEATHER_BACKGROUNDS[G.GAME.xmpl_weather_background]
+    if not cfg then return end
+
+    for key, colour in pairs({L = cfg.L, C = cfg.C, D = cfg.D}) do
+        local target = G.C.BACKGROUND[key]
+        if target then
+            target[1], target[2], target[3], target[4] = colour[1], colour[2], colour[3], colour[4] or 1
+        end
+    end
+    G.C.BACKGROUND.contrast = cfg.contrast
+end
+
 function XMP_DARONNE_APPLY_FEAST_BACKGROUND()
     if not (G and G.C and G.C.BACKGROUND) then return end
 
@@ -87,6 +173,10 @@ if ease_background_colour_blind then
             XMP_DARONNE_APPLY_FEAST_BACKGROUND()
             return
         end
+        if G and G.GAME and G.GAME.xmpl_weather_background then
+            XMP_WEATHER_APPLY_BACKGROUND()
+            return
+        end
         return ease_background_colour_blind_ref(state, blind_override)
     end
 end
@@ -94,9 +184,23 @@ end
 if Game and Game.update then
     local game_update_ref = Game.update
     function Game:update(dt)
+        local saved_gamespeed
+        if G and G.GAME and G.SETTINGS and G.GAME.xmpl_weather_speed
+            and not G.GAME.xmpl_daronne_bg_lock and not G.GAME.xmpl_daronne_music_active then
+            saved_gamespeed = G.SETTINGS.GAMESPEED
+            G.SETTINGS.GAMESPEED = G.GAME.xmpl_weather_speed
+        end
         local ret = game_update_ref(self, dt)
+        if saved_gamespeed then
+            G.SETTINGS.GAMESPEED = saved_gamespeed
+        end
         if G and G.GAME and G.GAME.xmpl_daronne_bg_lock then
             XMP_DARONNE_APPLY_FEAST_BACKGROUND()
+        elseif G and G.GAME and G.GAME.xmpl_weather_background then
+            XMP_WEATHER_APPLY_BACKGROUND()
+        end
+        if XMP_WEATHER_REFRESH then
+            XMP_WEATHER_REFRESH(dt)
         end
         return ret
     end
