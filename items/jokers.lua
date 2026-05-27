@@ -25,6 +25,12 @@ SMODS.Atlas{
 }
 
 SMODS.Atlas{
+    key = 'bigdata_atlas',
+    path = 'BigData.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
     key = 'may_atlas',
     path = 'may.png',
     px = 71, py = 95
@@ -1668,6 +1674,37 @@ SMODS.Joker{
             end
 
             if has_effect then return ret end
+        end
+    end
+}
+
+-- BigData Joker with 3D Relief Effect via shader
+SMODS.Joker{
+    key = 'bigdata',
+    atlas = 'bigdata_atlas',
+    rarity = 2,
+    cost = 6,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    shader = 'relief_3d',
+    pos = {x = 0, y = 0},
+    config = {
+        extra = {
+            xmult = 1.5,
+            chip_gain = 25
+        }
+    },
+    loc_vars = function(self, info_queue, center)
+        return {vars = {center.ability.extra.xmult, center.ability.extra.chip_gain}}
+    end,
+    calculate = function(self, card, context)
+        if context.joker_main then
+            return {
+                message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
+                xmult_mod = card.ability.extra.xmult,
+                chip_mod = card.ability.extra.chip_gain
+            }
         end
     end
 }
