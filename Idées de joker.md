@@ -1,3 +1,14 @@
+## Daronne a vexpi
+**Assets :**
+- assets\2x\daronnevexpi.png
+
+**Effets :**
+- Change totalement gameplay sah
+
+**Reference :**
+> La chose la plus grande de cette univers
+> Tout le monde la connais, et pourtant personne connait vexpi (il a la flemme)
+
 ## 4-2 de théo
 
 *Assets : aucun*
@@ -64,7 +75,6 @@
 - Penser a conserver le statut de la carte *(l'état du multiplicateur, son edition, stickers, seal, enhance, les markings **(du mod lucky rabbit, penser a le rajouter en dependecies)**)*
 
 **Reference :**
-
 > Les températures en mai ça va on se sent bien
 > la même référence que may sauf que la c'est l'oasis
 
@@ -75,10 +85,54 @@
 '{X:mult,C:white}X#5#{} Mult and {X:chips,C:white}X#6#{} Chips'
 ```
 
+## Perfect middle
+**Assets :**
+- assets\sounds\sm64swimswim.ogg
+- assets\2x\perfectmiddle.png
+
+**Effets :**
+- Le joker est crée quand may et coldcarrefour se trouvent dans le même deck (il faut donc trouver une de ses carte 2 fois dans le shop). Supprime les deux jokers
+- Prend les effets de may, et coldcarrefour et les combine sans downside de réduire les mult. Les mult augmente au fur et a mesure du temps
+- Essaye de combiner les shaders, background pour faire une sorte de paradis magnifique, un juste milieu entre le frois et le chaud
+- Mettre la musique ms64swimswim
+- Toujours pensez au avertissement des 2 jokers présendent et le modèle des précédents
+- Le joker est légendaire, et ne peux pas être trouvé naturellement
+
+**Reference :**
+> Fait reférence a cette douche de merde qui veux jamais se mettre a la bonne temperature et qui passe de iceberge a enfers quand tu bouge de 1cm
+> Met dans la quête vers le bohnneur, se trouve la temperature parfaite trouvée sous la douche...
+
+**Description :**
+```lua
+'{C:inactive}You just found the perfect temperature under the shower{}',
+'{X:mult,C:white}X#5#{} Mult and {X:chips,C:white}X#6#{} Chips'
+```
 
 ## Big data
 
 ## Big data container en papier
+
+## Benjamin cette grosse merde
+
+# Decks
+
+## Temperature deck
+**Assets :**
+- assets\2x\temperaturedeck.png
+
+**Effects :**
+- Donne au début du jeu "may" avec le sticker absolute
+- Fais un X2 sur toutes les effets des joker "may", "carrefour", "perfect middle"
+- Le perfect middle dans ce deck uniquement dure seulement 3 min, ensuite il redevient "may"
+- La fréquence d'appararition des jokers "may" et "carrefour" est énormément augmenté, il faut qu'on puisse les trouver environ toutes les 6 min (grosse pincette)
+- Pour débloquer ce deck, il faut avoir déja eu "perfect middle" en game
+
+**Description :**
+```lua
+'Deck with litteral weather'
+'Gives {C:attention}May{} at the start of the game'
+'Weather can {C:green,E:2}behave strangely{} with this deck'
+```
 
 # Global
 

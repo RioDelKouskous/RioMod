@@ -35,6 +35,13 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
                 }
             },
+            j_xmpl_perfect_middle = {
+                name = 'Perfect Middle',
+                text = {
+                    '{C:inactive}You just found the perfect temperature under the shower{}',
+                    '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
+                }
+            },
             j_xmpl_derek = {
                 name = 'Derek',
                 text = {
@@ -105,6 +112,18 @@ return {
                 },
                 unlock = {
                     'Have {C:attention}Vexpi\'s Mother{}',
+                    'in a run',
+                }
+            },
+            b_xmpl_temperature_deck = {
+                name = 'Temperature Deck',
+                text = {
+                    'Deck with litteral weather',
+                    'Gives {C:attention}May{} at the start of the game',
+                    'Weather can {C:green,E:2}behave strangely{} with this deck',
+                },
+                unlock = {
+                    'Have had {C:attention}Perfect Middle{}',
                     'in a run',
                 }
             }
