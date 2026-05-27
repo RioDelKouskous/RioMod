@@ -83,7 +83,7 @@ local WEATHER_DEFAULT_SETTINGS = {
     shader = true
 }
 local WEATHER_MIN_X = 0.01
-local WEATHER_DURATION = 150
+local WEATHER_DURATION = 180
 local TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION = 180
 local TEMPERATURE_DECK_WEATHER_MULT = 2
 local TEMPERATURE_DECK_WEATHER_SHOP_CHANCE = 0.35
@@ -110,7 +110,6 @@ local DARONNE_VEXPI_FEAST_LINES = {
     'k_xmpl_daronne_feast_line_4',
 }
 
-local DARONNE_VEXPI_STAT_CAP = 1e300
 
 local rio_daronne_apply_shop_negative
 local rio_daronne_queue_grand_feast
@@ -1235,6 +1234,125 @@ local function rio_weather_score(card)
         xchips = extra.Xchips * weather_mult
     }
 end
+
+local function rio_weather_draw_flame(w, h, x, base, height, lean, alpha)
+    love.graphics.setColor(1, 0.18, 0.02, alpha * 0.75)
+    love.graphics.polygon('fill',
+        x - 0.15, base,
+        x + 0.04 + lean, base - height,
+        x + 0.2, base
+    )
+    love.graphics.setColor(1, 0.78, 0.18, alpha)
+    love.graphics.polygon('fill',
+        x - 0.08, base,
+        x + 0.02 + lean * 0.6, base - height * 0.62,
+        x + 0.11, base
+    )
+end
+
+local function rio_weather_draw_may_aura(card, w, h, t)
+    love.graphics.setColor(1, 0.16, 0.02, 0.18 + 0.04 * math.sin(t * 4))
+    love.graphics.rectangle('fill', -0.08, -0.08, w + 0.16, h + 0.16, 0.08, 0.08)
+
+    for i = 1, 8 do
+        local p = i / 8
+        local x = -0.05 + p * (w + 0.1)
+        local height = 0.42 + 0.18 * math.sin(t * 5.2 + i * 1.7)
+        local lean = 0.07 * math.sin(t * 3.4 + i)
+        rio_weather_draw_flame(w, h, x, h + 0.08, height, lean, 0.55 + 0.2 * math.sin(t * 2.8 + i))
+    end
+end
+
+local function rio_weather_draw_snowflake(x, y, r, alpha, drift)
+    love.graphics.setColor(0.8, 0.95, 1, alpha)
+    love.graphics.circle('fill', x, y, r)
+    love.graphics.line(x - r * 2.2, y, x + r * 2.2, y)
+    love.graphics.line(x, y - r * 2.2, x, y + r * 2.2)
+    love.graphics.line(x - r * 1.55, y - r * 1.55, x + r * 1.55, y + r * 1.55)
+    love.graphics.line(x - r * 1.55, y + r * 1.55, x + r * 1.55, y - r * 1.55)
+end
+
+local function rio_weather_draw_cold_aura(card, w, h, t)
+    love.graphics.setColor(0.22, 0.72, 1, 0.17 + 0.04 * math.sin(t * 2.3))
+    love.graphics.rectangle('fill', -0.08, -0.08, w + 0.16, h + 0.16, 0.08, 0.08)
+
+    for i = 1, 12 do
+        local seed = i * 37.17
+        local fall = (t * (0.16 + (i % 4) * 0.035) + seed) % 1
+        local x = ((math.sin(seed) * 0.5 + 0.5) * (w + 0.65) - 0.35) + math.sin(t * 2 + i) * 0.08
+        local y = -0.2 + fall * (h + 0.55)
+        local r = 0.025 + (i % 3) * 0.012
+        rio_weather_draw_snowflake(x, y, r, 0.34 + (i % 4) * 0.06)
+    end
+
+    love.graphics.setColor(0.75, 0.95, 1, 0.26)
+    for i = 1, 4 do
+        local y = (i / 5) * h + 0.05 * math.sin(t * 3 + i)
+        love.graphics.line(-0.14, y, w + 0.14, y - 0.12)
+    end
+end
+
+local function rio_weather_draw_middle_aura(card, w, h, t)
+    local pulse = 0.5 + 0.5 * math.sin(t * 3)
+    love.graphics.setColor(1, 0.86, 0.35, 0.13 + 0.07 * pulse)
+    love.graphics.circle('fill', w * 0.5, h * 0.5, h * (0.58 + 0.06 * pulse))
+    love.graphics.setColor(0.55, 0.95, 1, 0.12 + 0.06 * (1 - pulse))
+    love.graphics.circle('fill', w * 0.5, h * 0.5, h * (0.46 + 0.05 * (1 - pulse)))
+
+    for i = 1, 10 do
+        local angle = t * 0.8 + i * math.pi * 0.2
+        local cx, cy = w * 0.5, h * 0.5
+        local r1 = h * 0.34
+        local r2 = h * (0.58 + 0.05 * math.sin(t * 2 + i))
+        love.graphics.setColor(1, 0.92, 0.45, 0.28)
+        love.graphics.line(
+            cx + math.cos(angle) * r1,
+            cy + math.sin(angle) * r1,
+            cx + math.cos(angle) * r2,
+            cy + math.sin(angle) * r2
+        )
+    end
+
+    love.graphics.setColor(1, 1, 1, 0.24 + 0.12 * pulse)
+    love.graphics.circle('line', w * 0.5, h * 0.5, h * (0.5 + 0.03 * pulse))
+end
+
+local function rio_weather_draw_aura(card)
+    local key = rio_weather_center_key(card)
+    if not rio_weather_is_key(key) or not (card and card.children and card.children.center) then return end
+    if card.greyed or card.debuff or card.REMOVED or card.destroyed then return end
+
+    local t = G and G.TIMERS and (G.TIMERS.REAL or G.TIMERS.TOTAL) or 0
+    local w = card.VT and card.VT.w or G.CARD_W
+    local h = card.VT and card.VT.h or G.CARD_H
+    local scale = 1.08 + 0.015 * math.sin(t * 2.4 + (card.ID or 0))
+    local old_line_width = love.graphics.getLineWidth()
+
+    prep_draw(card, scale, 0, nil, true)
+    love.graphics.setBlendMode('alpha')
+    love.graphics.setLineWidth(0.018)
+
+    if key == MAY_KEY then
+        rio_weather_draw_may_aura(card, w, h, t)
+    elseif key == COLD_CARREFOUR_KEY then
+        rio_weather_draw_cold_aura(card, w, h, t)
+    elseif key == PERFECT_MIDDLE_KEY then
+        rio_weather_draw_middle_aura(card, w, h, t)
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(old_line_width)
+    love.graphics.pop()
+end
+
+SMODS.DrawStep{
+    key = 'xmpl_weather_aura',
+    order = -15,
+    conditions = {vortex = false, facing = 'front'},
+    func = function(card)
+        rio_weather_draw_aura(card)
+    end,
+}
 
 function XMP_WEATHER_SETTINGS_UI(card)
     local extra = rio_weather_get_extra(card)
