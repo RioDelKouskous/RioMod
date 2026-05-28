@@ -83,10 +83,13 @@ local WEATHER_DEFAULT_SETTINGS = {
     shader = true
 }
 local WEATHER_MIN_X = 0.01
-local WEATHER_DURATION = 180
-local TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION = 180
+local WEATHER_DURATION = 140
+local TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION = 150
 local TEMPERATURE_DECK_WEATHER_MULT = 2
 local TEMPERATURE_DECK_WEATHER_SHOP_CHANCE = 0.35
+local TEMPERATURE_DECK_PERFECT_MIDDLE_CHANCE = 0.25
+local TEMPERATURE_DECK_SELF_DESTRUCT_CHANCE = 0.25
+local TEMPERATURE_TORNADO_DURATION = 2.4
 local DARONNE_VEXPI_WORDS = {
     'Yummy!',
     'Delicious!',
@@ -110,6 +113,7 @@ local DARONNE_VEXPI_FEAST_LINES = {
     'k_xmpl_daronne_feast_line_4',
 }
 
+local DARONNE_VEXPI_STAT_CAP = 1e300
 
 local rio_daronne_apply_shop_negative
 local rio_daronne_queue_grand_feast
@@ -1060,11 +1064,81 @@ local function rio_weather_init_card(card, kind)
     end
     extra.Xmult = extra.Xmult or 2
     extra.Xchips = extra.Xchips or 2
-    extra.elapsed = extra.elapsed or 0
+    if extra.elapsed == nil then
+        extra.elapsed = rio_is_temperature_deck_run()
+            and pseudorandom('temperature_deck_weather_timer_' .. tostring(card.sort_id or card.ID or math.random())) * WEATHER_DURATION * 0.85
+            or 0
+    end
     extra.weather_kind = kind
     extra.weather_initialized = true
     rio_weather_ensure_settings(extra)
     return extra
+end
+
+local function rio_temperature_weather_sync_slots(exclude_card)
+    if not (G and G.GAME and G.jokers and G.jokers.config) then return end
+
+    local old_bonus = G.GAME.xmpl_temperature_weather_slot_bonus or 0
+    if not rio_is_temperature_deck_run() then
+        if old_bonus ~= 0 then
+            G.jokers.config.card_limit = G.jokers.config.card_limit - old_bonus
+            G.GAME.xmpl_temperature_weather_slot_bonus = 0
+        end
+        return
+    end
+
+    local bonus = 0
+    for _, joker in ipairs(G.jokers.cards or {}) do
+        if joker ~= exclude_card and rio_weather_is_key(rio_weather_center_key(joker))
+            and joker.added_to_deck and not joker.getting_sliced and not joker.destroyed then
+            bonus = bonus + 1
+        end
+    end
+
+    if bonus ~= old_bonus then
+        G.jokers.config.card_limit = G.jokers.config.card_limit + bonus - old_bonus
+        G.GAME.xmpl_temperature_weather_slot_bonus = bonus
+    end
+end
+
+local function rio_temperature_weather_roll_target(card, fallback_key)
+    local current_key = rio_weather_center_key(card)
+    if not rio_is_temperature_deck_run()
+        or current_key == PERFECT_MIDDLE_KEY
+        or fallback_key == PERFECT_MIDDLE_KEY then
+        return fallback_key
+    end
+
+    local seed = 'temperature_deck_perfect_middle_' .. tostring(card and (card.sort_id or card.ID) or 'card') .. '_' .. tostring(G.GAME and G.GAME.round_resets and G.GAME.round_resets.ante or 0) .. '_' .. tostring(math.floor((G.TIMERS and G.TIMERS.REAL or 0) * 100))
+    if pseudorandom(seed) < TEMPERATURE_DECK_PERFECT_MIDDLE_CHANCE then
+        return PERFECT_MIDDLE_KEY
+    end
+
+    return fallback_key
+end
+
+local function rio_temperature_weather_self_destruct(card)
+    if not rio_is_temperature_deck_run()
+        or not (card and card.added_to_deck and not card.getting_sliced and not card.destroyed) then
+        return false
+    end
+
+    local seed = 'temperature_deck_weather_self_destruct_' .. tostring(card.sort_id or card.ID or 'card') .. '_' .. tostring(G.GAME and G.GAME.hands_played or 0)
+    if pseudorandom(seed) >= TEMPERATURE_DECK_SELF_DESTRUCT_CHANCE then return false end
+
+    card.getting_sliced = true
+    card:juice_up(0.8, 0.8)
+    card_eval_status_text(card, 'extra', nil, nil, nil, {message = 'Self destruct!', colour = G.C.RED})
+    G.E_MANAGER:add_event(Event({
+        trigger = 'after',
+        delay = 0.2,
+        func = function()
+            rio_temperature_weather_sync_slots(card)
+            SMODS.destroy_cards(card, true)
+            return true
+        end
+    }))
+    return true
 end
 
 local function rio_weather_can_apply_world()
@@ -1099,6 +1173,8 @@ end
 
 local function rio_weather_transform(card, target_key)
     if not (card and G and G.P_CENTERS and G.P_CENTERS[target_key]) then return end
+    target_key = rio_temperature_weather_roll_target(card, target_key)
+    if not (G.P_CENTERS and G.P_CENTERS[target_key]) then return end
     local old_extra = copy_table(rio_weather_get_extra(card))
     local old_sticker = card.sticker
     local old_sticker_run = card.sticker_run
@@ -1109,15 +1185,24 @@ local function rio_weather_transform(card, target_key)
     old_extra.weather_initialized = true
     rio_weather_ensure_settings(old_extra)
 
+    local temperature_deck = rio_is_temperature_deck_run()
+    if temperature_deck then
+        rio_daronne_set_absolute(card, false)
+    end
+
     card:set_ability(G.P_CENTERS[target_key], nil, true)
+    if target_key == PERFECT_MIDDLE_KEY and G.P_CENTERS[PERFECT_MIDDLE_KEY] then
+        G.P_CENTERS[PERFECT_MIDDLE_KEY].discovered = true
+    end
     card.ability.extra = old_extra
     card.sticker = old_sticker
     card.sticker_run = old_sticker_run
     card.seal = old_seal
     card.edition = old_edition
-    if target_key == MAY_KEY and rio_is_temperature_deck_run() then
+    if temperature_deck then
         rio_daronne_set_absolute(card, true)
     end
+    rio_temperature_weather_sync_slots()
     card:juice_up(0.4, 0.4)
     SMODS.previous_track = nil
 end
@@ -1152,6 +1237,7 @@ local function rio_weather_tick_card(card, dt)
 end
 
 local function rio_weather_try_fuse()
+    if rio_is_temperature_deck_run() then return end
     if not (G and G.jokers and G.jokers.cards and G.P_CENTERS and G.P_CENTERS[PERFECT_MIDDLE_KEY]) then return end
     local may, cold
     for _, card in ipairs(G.jokers.cards) do
@@ -1186,30 +1272,162 @@ local function rio_weather_try_fuse()
     SMODS.previous_track = nil
 end
 
+local function rio_temperature_weather_card_uid(card)
+    if not card then return nil end
+    return tostring(card.sort_id or card.ID or card.unique_val or card)
+end
+
+local function rio_temperature_weather_card_alive(card)
+    return card and rio_weather_is_key(rio_weather_center_key(card))
+        and card.added_to_deck and not card.getting_sliced and not card.destroyed and not card.REMOVED
+end
+
 local function rio_weather_choose_active()
     if not (G and G.jokers and G.jokers.cards) then return nil end
     local active
     for _, card in ipairs(G.jokers.cards) do
-        if rio_weather_is_key(rio_weather_center_key(card))
-            and card.added_to_deck and not card.getting_sliced and not card.destroyed then
+        if rio_temperature_weather_card_alive(card) then
             active = card
         end
     end
     return active
 end
 
+local rio_weather_refresh_hover_popup
+
 function XMP_WEATHER_REFRESH(dt)
     if not (G and G.GAME) then return end
     rio_weather_try_fuse()
+    rio_temperature_weather_sync_slots()
     if G.jokers and G.jokers.cards then
         for _, card in ipairs(G.jokers.cards) do
-            if rio_weather_is_key(rio_weather_center_key(card)) and card.added_to_deck
-                and not card.getting_sliced and not card.destroyed then
+            if rio_temperature_weather_card_alive(card) then
                 rio_weather_tick_card(card, dt)
+                if rio_weather_refresh_hover_popup then
+                    rio_weather_refresh_hover_popup(card)
+                end
             end
         end
     end
     rio_weather_apply_world(rio_weather_choose_active())
+end
+
+local function rio_temperature_weather_lock_order()
+    if not (G and G.GAME and G.jokers and G.jokers.cards) then return end
+    local order = G.GAME.xmpl_temperature_weather_locked_order or {}
+    local seen = {}
+    for _, card in ipairs(G.jokers.cards) do
+        if rio_temperature_weather_card_alive(card) then
+            local uid = rio_temperature_weather_card_uid(card)
+            seen[uid] = true
+            if not order[uid] then
+                order[uid] = (G.GAME.xmpl_temperature_weather_next_order or 0) + 1
+                G.GAME.xmpl_temperature_weather_next_order = order[uid]
+            end
+        end
+    end
+    for uid in pairs(order) do
+        if not seen[uid] then order[uid] = nil end
+    end
+    G.GAME.xmpl_temperature_weather_locked_order = order
+end
+
+local function rio_temperature_weather_restore_order()
+    if not rio_is_temperature_deck_run() or not (G and G.GAME and G.jokers and G.jokers.cards) then return end
+    if G.GAME.xmpl_temperature_tornado_active then return end
+    rio_temperature_weather_lock_order()
+
+    local order = G.GAME.xmpl_temperature_weather_locked_order or {}
+    local weather_cards = {}
+    for _, card in ipairs(G.jokers.cards) do
+        if rio_temperature_weather_card_alive(card) then weather_cards[#weather_cards + 1] = card end
+    end
+    table.sort(weather_cards, function(a, b)
+        if not a then return false end
+        if not b then return true end
+        return (order[rio_temperature_weather_card_uid(a)] or 0) < (order[rio_temperature_weather_card_uid(b)] or 0)
+    end)
+
+    local idx = 1
+    for i, card in ipairs(G.jokers.cards) do
+        if rio_temperature_weather_card_alive(card) and weather_cards[idx] then
+            G.jokers.cards[i] = weather_cards[idx]
+            idx = idx + 1
+        end
+    end
+    if G.jokers.align_cards then G.jokers:align_cards() end
+end
+
+local function rio_temperature_weather_shuffle_order()
+    if not rio_is_temperature_deck_run() or not (G and G.GAME and G.jokers and G.jokers.cards) then return end
+    local weather_cards = {}
+    for _, card in ipairs(G.jokers.cards) do
+        if rio_temperature_weather_card_alive(card) then
+            weather_cards[#weather_cards + 1] = card
+        end
+    end
+    if #weather_cards < 2 then return end
+
+    for i = #weather_cards, 2, -1 do
+        local j = math.floor(pseudorandom('temperature_tornado_shuffle_' .. tostring(G.GAME.round or 0) .. '_' .. i) * i) + 1
+        weather_cards[i], weather_cards[j] = weather_cards[j], weather_cards[i]
+    end
+
+    G.GAME.xmpl_temperature_weather_locked_order = {}
+    for i, card in ipairs(weather_cards) do
+        G.GAME.xmpl_temperature_weather_locked_order[rio_temperature_weather_card_uid(card)] = i
+    end
+    G.GAME.xmpl_temperature_weather_next_order = #weather_cards
+
+    local idx = 1
+    for i, card in ipairs(G.jokers.cards) do
+        if rio_temperature_weather_card_alive(card) and weather_cards[idx] then
+            G.jokers.cards[i] = weather_cards[idx]
+            weather_cards[idx]:juice_up(0.7, 0.7)
+            idx = idx + 1
+        end
+    end
+    if G.jokers.align_cards then G.jokers:align_cards() end
+    rio_weather_apply_world(rio_weather_choose_active())
+end
+
+function XMP_TEMPERATURE_TORNADO_START()
+    if not rio_is_temperature_deck_run() or not (G and G.GAME) then return end
+    G.GAME.xmpl_temperature_tornado_active = true
+    G.GAME.xmpl_temperature_tornado_timer = TEMPERATURE_TORNADO_DURATION
+    G.GAME.xmpl_temperature_tornado_started_at = G.TIMERS and G.TIMERS.REAL or 0
+    if G.FUNCS and G.FUNCS.screen_shake then
+        G.FUNCS.screen_shake(0.75)
+    end
+    rio_temperature_weather_shuffle_order()
+end
+
+local function rio_temperature_weather_try_tornado(context)
+    if not (context and context.end_of_round) or not rio_is_temperature_deck_run() or not (G and G.GAME) then return end
+    if context.repetition or context.blueprint or context.individual then return end
+    local token = tostring(G.GAME.round or 0) .. '_' .. tostring(G.GAME.hands_played or 0) .. '_' .. tostring(G.GAME.round_resets and G.GAME.round_resets.ante or 0)
+    if G.GAME.xmpl_temperature_last_tornado_token == token then return end
+    G.GAME.xmpl_temperature_last_tornado_token = token
+    XMP_TEMPERATURE_TORNADO_START()
+end
+
+function XMP_TEMPERATURE_TORNADO_REFRESH(dt)
+    if not (G and G.GAME) then return end
+    if not rio_is_temperature_deck_run() then
+        G.GAME.xmpl_temperature_tornado_active = nil
+        return
+    end
+    if G.GAME.xmpl_temperature_tornado_active then
+        G.GAME.xmpl_temperature_tornado_timer = (G.GAME.xmpl_temperature_tornado_timer or 0) - math.max(dt or 0, 0)
+        local timer = G.GAME.xmpl_temperature_tornado_timer or 0
+        if timer <= 0 then
+            G.GAME.xmpl_temperature_tornado_active = nil
+            G.GAME.xmpl_temperature_tornado_timer = nil
+            rio_temperature_weather_restore_order()
+        end
+    else
+        rio_temperature_weather_restore_order()
+    end
 end
 
 local function rio_weather_loc_vars(self, info_queue, card)
@@ -1235,122 +1453,64 @@ local function rio_weather_score(card)
     }
 end
 
-local function rio_weather_draw_flame(w, h, x, base, height, lean, alpha)
-    love.graphics.setColor(1, 0.18, 0.02, alpha * 0.75)
-    love.graphics.polygon('fill',
-        x - 0.15, base,
-        x + 0.04 + lean, base - height,
-        x + 0.2, base
-    )
-    love.graphics.setColor(1, 0.78, 0.18, alpha)
-    love.graphics.polygon('fill',
-        x - 0.08, base,
-        x + 0.02 + lean * 0.6, base - height * 0.62,
-        x + 0.11, base
-    )
+local function rio_weather_popup_token(card)
+    local extra = card and rio_weather_get_extra(card)
+    if not extra then return nil end
+    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
+    return rio_format_num((extra.Xmult or 2) * weather_mult) .. '|' .. rio_format_num((extra.Xchips or 2) * weather_mult)
 end
 
-local function rio_weather_draw_may_aura(card, w, h, t)
-    love.graphics.setColor(1, 0.16, 0.02, 0.18 + 0.04 * math.sin(t * 4))
-    love.graphics.rectangle('fill', -0.08, -0.08, w + 0.16, h + 0.16, 0.08, 0.08)
+rio_weather_refresh_hover_popup = function(card)
+    if not (card and card.hovering and G and G.UIDEF and G.UIDEF.card_h_popup and Node and Node.hover) then return end
+    local token = rio_weather_popup_token(card)
+    if not token or card.xmpl_weather_popup_token == token then return end
 
-    for i = 1, 8 do
-        local p = i / 8
-        local x = -0.05 + p * (w + 0.1)
-        local height = 0.42 + 0.18 * math.sin(t * 5.2 + i * 1.7)
-        local lean = 0.07 * math.sin(t * 3.4 + i)
-        rio_weather_draw_flame(w, h, x, h + 0.08, height, lean, 0.55 + 0.2 * math.sin(t * 2.8 + i))
+    card.xmpl_weather_popup_token = token
+    card.ability_UIBox_table = card:generate_UIBox_ability_table()
+    card.config.h_popup = G.UIDEF.card_h_popup(card)
+    card.config.h_popup_config = card:align_h_popup()
+    if card.children and card.children.h_popup then
+        card.children.h_popup:remove()
+        card.children.h_popup = nil
     end
+    Node.hover(card)
 end
 
-local function rio_weather_draw_snowflake(x, y, r, alpha, drift)
-    love.graphics.setColor(0.8, 0.95, 1, alpha)
-    love.graphics.circle('fill', x, y, r)
-    love.graphics.line(x - r * 2.2, y, x + r * 2.2, y)
-    love.graphics.line(x, y - r * 2.2, x, y + r * 2.2)
-    love.graphics.line(x - r * 1.55, y - r * 1.55, x + r * 1.55, y + r * 1.55)
-    love.graphics.line(x - r * 1.55, y + r * 1.55, x + r * 1.55, y - r * 1.55)
-end
+local WEATHER_CARD_SHADERS = {
+    [MAY_KEY] = 'xmpl_weather_card_heat',
+    [COLD_CARREFOUR_KEY] = 'xmpl_weather_card_cold',
+    [PERFECT_MIDDLE_KEY] = 'xmpl_weather_card_middle'
+}
 
-local function rio_weather_draw_cold_aura(card, w, h, t)
-    love.graphics.setColor(0.22, 0.72, 1, 0.17 + 0.04 * math.sin(t * 2.3))
-    love.graphics.rectangle('fill', -0.08, -0.08, w + 0.16, h + 0.16, 0.08, 0.08)
-
-    for i = 1, 12 do
-        local seed = i * 37.17
-        local fall = (t * (0.16 + (i % 4) * 0.035) + seed) % 1
-        local x = ((math.sin(seed) * 0.5 + 0.5) * (w + 0.65) - 0.35) + math.sin(t * 2 + i) * 0.08
-        local y = -0.2 + fall * (h + 0.55)
-        local r = 0.025 + (i % 3) * 0.012
-        rio_weather_draw_snowflake(x, y, r, 0.34 + (i % 4) * 0.06)
-    end
-
-    love.graphics.setColor(0.75, 0.95, 1, 0.26)
-    for i = 1, 4 do
-        local y = (i / 5) * h + 0.05 * math.sin(t * 3 + i)
-        love.graphics.line(-0.14, y, w + 0.14, y - 0.12)
-    end
-end
-
-local function rio_weather_draw_middle_aura(card, w, h, t)
-    local pulse = 0.5 + 0.5 * math.sin(t * 3)
-    love.graphics.setColor(1, 0.86, 0.35, 0.13 + 0.07 * pulse)
-    love.graphics.circle('fill', w * 0.5, h * 0.5, h * (0.58 + 0.06 * pulse))
-    love.graphics.setColor(0.55, 0.95, 1, 0.12 + 0.06 * (1 - pulse))
-    love.graphics.circle('fill', w * 0.5, h * 0.5, h * (0.46 + 0.05 * (1 - pulse)))
-
-    for i = 1, 10 do
-        local angle = t * 0.8 + i * math.pi * 0.2
-        local cx, cy = w * 0.5, h * 0.5
-        local r1 = h * 0.34
-        local r2 = h * (0.58 + 0.05 * math.sin(t * 2 + i))
-        love.graphics.setColor(1, 0.92, 0.45, 0.28)
-        love.graphics.line(
-            cx + math.cos(angle) * r1,
-            cy + math.sin(angle) * r1,
-            cx + math.cos(angle) * r2,
-            cy + math.sin(angle) * r2
-        )
-    end
-
-    love.graphics.setColor(1, 1, 1, 0.24 + 0.12 * pulse)
-    love.graphics.circle('line', w * 0.5, h * 0.5, h * (0.5 + 0.03 * pulse))
-end
-
-local function rio_weather_draw_aura(card)
+local function rio_weather_should_draw_card_shader(card)
     local key = rio_weather_center_key(card)
-    if not rio_weather_is_key(key) or not (card and card.children and card.children.center) then return end
-    if card.greyed or card.debuff or card.REMOVED or card.destroyed then return end
+    local shader = WEATHER_CARD_SHADERS[key]
+    if not shader or not (card and card.children and card.children.center) then return nil end
+    if not (card.config.center.discovered or card.bypass_discovery_center) then return nil end
+    if card.greyed or card.REMOVED or card.destroyed or card.getting_sliced then return nil end
+    if not (card.added_to_deck and G and G.jokers and card.area == G.jokers) then return nil end
+    if not rio_weather_can_apply_world() then return nil end
 
-    local t = G and G.TIMERS and (G.TIMERS.REAL or G.TIMERS.TOTAL) or 0
-    local w = card.VT and card.VT.w or G.CARD_W
-    local h = card.VT and card.VT.h or G.CARD_H
-    local scale = 1.08 + 0.015 * math.sin(t * 2.4 + (card.ID or 0))
-    local old_line_width = love.graphics.getLineWidth()
+    local settings = rio_weather_ensure_settings(rio_weather_get_extra(card))
+    if not settings.shader then return nil end
 
-    prep_draw(card, scale, 0, nil, true)
-    love.graphics.setBlendMode('alpha')
-    love.graphics.setLineWidth(0.018)
-
-    if key == MAY_KEY then
-        rio_weather_draw_may_aura(card, w, h, t)
-    elseif key == COLD_CARREFOUR_KEY then
-        rio_weather_draw_cold_aura(card, w, h, t)
-    elseif key == PERFECT_MIDDLE_KEY then
-        rio_weather_draw_middle_aura(card, w, h, t)
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.setLineWidth(old_line_width)
-    love.graphics.pop()
+    return shader
 end
 
 SMODS.DrawStep{
-    key = 'xmpl_weather_aura',
-    order = -15,
+    key = 'xmpl_weather_card_shader',
+    order = -11,
     conditions = {vortex = false, facing = 'front'},
     func = function(card)
-        rio_weather_draw_aura(card)
+        card.draw_bypass = card.draw_bypass or {}
+        card.draw_bypass.center = nil
+
+        local shader = rio_weather_should_draw_card_shader(card)
+        if not shader then return end
+
+        card.draw_bypass.center = true
+        card.children.center:draw_shader(shader, nil, {{name = 'aura_mode', val = 1}}, nil, card.children.center, 0.16, 0, nil, nil, true)
+        card.children.center:draw_shader(shader, nil, {{name = 'aura_mode', val = 0}}, nil, nil, nil, nil, nil, nil, true)
     end,
 }
 
@@ -1407,14 +1567,21 @@ SMODS.Joker{
         if rio_is_temperature_deck_run() then
             rio_daronne_set_absolute(card, true)
         end
+        rio_temperature_weather_sync_slots()
         rio_weather_apply_world(card)
     end,
     remove_from_deck = function(self, card, from_debuff)
+        rio_temperature_weather_sync_slots(card)
         if rio_weather_choose_active() == card then rio_weather_clear_world() end
     end,
     calculate = function(self, card, context)
         rio_weather_init_card(card, 'may')
-        if context.joker_main then return rio_weather_score(card) end
+        rio_temperature_weather_try_tornado(context)
+        if context.joker_main then
+            local score = rio_weather_score(card)
+            if not context.blueprint then rio_temperature_weather_self_destruct(card) end
+            return score
+        end
     end
 }
 
@@ -1432,14 +1599,24 @@ SMODS.Joker{
     loc_vars = rio_weather_loc_vars,
     add_to_deck = function(self, card, from_debuff)
         rio_weather_init_card(card, 'cold_carrefour')
+        if rio_is_temperature_deck_run() then
+            rio_daronne_set_absolute(card, true)
+        end
+        rio_temperature_weather_sync_slots()
         rio_weather_apply_world(card)
     end,
     remove_from_deck = function(self, card, from_debuff)
+        rio_temperature_weather_sync_slots(card)
         if rio_weather_choose_active() == card then rio_weather_clear_world() end
     end,
     calculate = function(self, card, context)
         rio_weather_init_card(card, 'cold_carrefour')
-        if context.joker_main then return rio_weather_score(card) end
+        rio_temperature_weather_try_tornado(context)
+        if context.joker_main then
+            local score = rio_weather_score(card)
+            if not context.blueprint then rio_temperature_weather_self_destruct(card) end
+            return score
+        end
     end
 }
 
@@ -1463,14 +1640,24 @@ SMODS.Joker{
             G.P_CENTERS[PERFECT_MIDDLE_KEY].discovered = true
         end
         rio_weather_init_card(card, 'perfect_middle')
+        if rio_is_temperature_deck_run() then
+            rio_daronne_set_absolute(card, true)
+        end
+        rio_temperature_weather_sync_slots()
         rio_weather_apply_world(card)
     end,
     remove_from_deck = function(self, card, from_debuff)
+        rio_temperature_weather_sync_slots(card)
         if rio_weather_choose_active() == card then rio_weather_clear_world() end
     end,
     calculate = function(self, card, context)
         rio_weather_init_card(card, 'perfect_middle')
-        if context.joker_main then return rio_weather_score(card) end
+        rio_temperature_weather_try_tornado(context)
+        if context.joker_main then
+            local score = rio_weather_score(card)
+            if not context.blueprint then rio_temperature_weather_self_destruct(card) end
+            return score
+        end
     end
 }
 
@@ -1960,6 +2147,11 @@ if CardArea and CardArea.emplace then
         if G and self == G.jokers and card and card.config and card.config.center
             and card.config.center.key == MAY_KEY and rio_is_temperature_deck_run() then
             rio_daronne_set_absolute(card, true)
+        end
+        if G and self == G.jokers and rio_temperature_weather_card_alive(card)
+            and rio_is_temperature_deck_run() then
+            rio_daronne_set_absolute(card, true)
+            rio_temperature_weather_sync_slots()
         end
         if G and (self == G.consumeables or self == G.shop_jokers or self == G.shop_booster or self == G.pack_cards) then
             rio_daronne_apply_shop_negative()

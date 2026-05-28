@@ -113,6 +113,22 @@ SMODS.ScreenShader{
     end
 }
 
+SMODS.ScreenShader{
+    key = 'temperature_tornado',
+    path = 'temperature_tornado.fs',
+    send_vars = function()
+        local timer = G and G.GAME and G.GAME.xmpl_temperature_tornado_timer or 0
+        local duration = 2.4
+        return {
+            time = G and G.TIMERS and G.TIMERS.REAL or 0,
+            strength = math.max(0, math.min(1, timer / duration))
+        }
+    end,
+    should_apply = function()
+        return G and G.GAME and G.GAME.xmpl_temperature_tornado_active
+    end
+}
+
 SMODS.Shader{
     key = 'relief_3d',
     path = 'relief_3d.fs',
@@ -131,6 +147,31 @@ SMODS.Shader{
             uv_offset = {0, uv_off_y}
         }
     end
+}
+
+local function rio_weather_card_shader_vars(sprite, card)
+    return {
+        time = G and G.TIMERS and G.TIMERS.REAL or 0,
+        strength = (card and (card.greyed or card.debuff or card.REMOVED or card.destroyed)) and 0.35 or 1
+    }
+end
+
+SMODS.Shader{
+    key = 'weather_card_heat',
+    path = 'weather_card_heat.fs',
+    send_vars = rio_weather_card_shader_vars
+}
+
+SMODS.Shader{
+    key = 'weather_card_cold',
+    path = 'weather_card_cold.fs',
+    send_vars = rio_weather_card_shader_vars
+}
+
+SMODS.Shader{
+    key = 'weather_card_middle',
+    path = 'weather_card_middle.fs',
+    send_vars = rio_weather_card_shader_vars
 }
 
 local DARONNE_FEAST_BACKGROUND = {
@@ -254,6 +295,9 @@ if Game and Game.update then
         end
         if XMP_WEATHER_REFRESH then
             XMP_WEATHER_REFRESH(dt)
+        end
+        if XMP_TEMPERATURE_TORNADO_REFRESH then
+            XMP_TEMPERATURE_TORNADO_REFRESH(dt)
         end
         return ret
     end

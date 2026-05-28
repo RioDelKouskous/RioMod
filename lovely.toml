@@ -10,7 +10,7 @@ pattern = "if card.area and card.area.config.type == 'joker' then"
 position = "after"
 match_indent = true
 payload = '''
-    if card.config.center.key == "j_xmpl_may" or card.config.center.key == "j_xmpl_cold_carrefour" or card.config.center.key == "j_xmpl_perfect_middle" then
+    if G and G.jokers and card.area == G.jokers and (card.config.center.key == "j_xmpl_may" or card.config.center.key == "j_xmpl_cold_carrefour" or card.config.center.key == "j_xmpl_perfect_middle") then
         use = {n=G.UIT.C, config={align = "cr"}, nodes={
             {n=G.UIT.C, config={ref_table = card, align = "cr", maxw = 1.25, padding = 0.1, r=0.08, minh = 0, hover = true, shadow = true, colour = G.C.UI.BACKGROUND_INACTIVE, button = card.config.center.key .. "_settings"}, nodes={
                 {n=G.UIT.B, config = {w=0.1,h=0.6}},
