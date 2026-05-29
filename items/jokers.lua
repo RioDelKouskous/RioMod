@@ -19,6 +19,12 @@ SMODS.Atlas{
 }
 
 SMODS.Atlas{
+    key = 'markiplier_atlas',
+    path = 'markiplier.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
     key = 'daronne_vexpi_atlas',
     path = 'daronnevexpi.png',
     px = 150, py = 95
@@ -1770,6 +1776,36 @@ SMODS.Joker{
 }
 
 SMODS.Joker{
+    key = 'markiplier',
+    atlas = 'markiplier_atlas',
+    rarity = 2,
+    cost = 5,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { chips = 87, mult = 87, odds = 4 } },
+    loc_vars = function(self, info_queue, card)
+        return {vars = {card.ability.extra.chips, card.ability.extra.mult, G.GAME.probabilities.normal, card.ability.extra.odds}}
+    end,
+    calculate = function(self, card, context)
+        if context.joker_main then
+            if pseudorandom('markiplier') < G.GAME.probabilities.normal / card.ability.extra.odds then
+                return {
+                    mult_mod = card.ability.extra.mult,
+                    message = localize{type = 'variable', key = 'a_mult', vars = {card.ability.extra.mult}}
+                }
+            else
+                return {
+                    chip_mod = card.ability.extra.chips,
+                    message = localize{type = 'variable', key = 'a_chips', vars = {card.ability.extra.chips}}
+                }
+            end
+        end
+    end
+}
+
+SMODS.Joker{
     key = 'derek',
     atlas = 'derek_atlas',
     rarity = 3,
@@ -1878,6 +1914,7 @@ SMODS.Joker{
     blueprint_compat = true,
     eternal_compat = true,
     pos = {x = 0, y = 0},
+    soul_pos = { x = 0, y = 1 },
     display_size = {w = 300, h = 190},
     config = {
         extra = {

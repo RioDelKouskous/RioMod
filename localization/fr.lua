@@ -84,6 +84,14 @@ return {
                     '{C:inactive}(Visualisation de données avec relief 3D){}',
                 }
             },
+            j_xmpl_markiplier = {
+                name = 'Markiplier',
+                text = {
+                    'Donne {C:chips}+#1#{} Jetons, ou une',
+                    'chance de {C:green}#3# sur #4#{} de donner',
+                    '{C:mult}+#2#{} Multi à la place'
+                }
+            },
             j_xmpl_daronne_vexpi = {
                 name = 'La daronne a vexpi',
                 text = {

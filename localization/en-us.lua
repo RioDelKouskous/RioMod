@@ -84,6 +84,14 @@ return {
                     '{C:inactive}(Data visualization with 3D relief){}',
                 }
             },
+            j_xmpl_markiplier = {
+                name = 'Markiplier',
+                text = {
+                    'Gives {C:chips}+#1#{} Chips, or a',
+                    '{C:green}#3# in #4#{} chance to give',
+                    '{C:mult}+#2#{} Mult instead'
+                }
+            },
             j_xmpl_daronne_vexpi = {
                 name = "Vexpi's Mother",
                 text = {
