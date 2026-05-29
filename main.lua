@@ -68,17 +68,31 @@ SMODS.Sound{
     end
 }
 
+SMODS.Sound{
+    key = 'music_tarpin_chaud',
+    path = 'mariodesertost.ogg',
+    sync = false,
+    pitch = 1,
+    volume = 0.9,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_weather_music == 'tarpin_chaud' and not G.GAME.xmpl_daronne_music_active then
+            return 950000
+        end
+    end
+}
+
 SMODS.ScreenShader{
     key = 'weather_heat',
     path = 'weather_heat.fs',
     send_vars = function()
+        local kind = G and G.GAME and G.GAME.xmpl_weather_shader
         return {
             time = G and G.TIMERS and G.TIMERS.REAL or 0,
-            strength = 1
+            strength = kind == 'tarpin_chaud' and 3.0 or 1
         }
     end,
     should_apply = function()
-        return G and G.GAME and G.GAME.xmpl_weather_shader == 'may'
+        return G and G.GAME and (G.GAME.xmpl_weather_shader == 'may' or G.GAME.xmpl_weather_shader == 'tarpin_chaud')
             and not G.GAME.xmpl_daronne_bg_lock
     end
 }
@@ -150,9 +164,12 @@ SMODS.Shader{
 }
 
 local function rio_weather_card_shader_vars(sprite, card)
+    local key = card and card.config and card.config.center and card.config.center.key
     return {
         time = G and G.TIMERS and G.TIMERS.REAL or 0,
-        strength = (card and (card.greyed or card.debuff or card.REMOVED or card.destroyed)) and 0.35 or 1
+        strength = (card and (card.greyed or card.debuff or card.REMOVED or card.destroyed)) and 0.35
+            or key == 'j_xmpl_fait_tarpin_chaud' and 3.0
+            or 1
     }
 end
 
@@ -223,12 +240,34 @@ local WEATHER_BACKGROUNDS = {
         C = HEX('b9f8ff'),
         D = HEX('4a8fbd'),
         contrast = 2.35
+    },
+    tarpin_chaud = {
+        L = HEX('ff1e1e'),
+        C = HEX('ff5a24'),
+        D = HEX('7a0000'),
+        contrast = 2.8
     }
 }
 
 function XMP_WEATHER_APPLY_BACKGROUND()
     if not (G and G.GAME and G.C and G.C.BACKGROUND) then return end
     if G.GAME.xmpl_daronne_bg_lock then return end
+    if G.GAME.xmpl_temperature_tornado_active then
+        local grey = {
+            L = HEX('9a9a9a'),
+            C = HEX('c4c4c4'),
+            D = HEX('565656'),
+            contrast = 2.45
+        }
+        for key, colour in pairs({L = grey.L, C = grey.C, D = grey.D}) do
+            local target = G.C.BACKGROUND[key]
+            if target then
+                target[1], target[2], target[3], target[4] = colour[1], colour[2], colour[3], colour[4] or 1
+            end
+        end
+        G.C.BACKGROUND.contrast = grey.contrast
+        return
+    end
     local cfg = WEATHER_BACKGROUNDS[G.GAME.xmpl_weather_background]
     if not cfg then return end
 
@@ -267,6 +306,10 @@ if ease_background_colour_blind then
             XMP_DARONNE_APPLY_FEAST_BACKGROUND()
             return
         end
+        if G and G.GAME and G.GAME.xmpl_temperature_tornado_active then
+            XMP_WEATHER_APPLY_BACKGROUND()
+            return
+        end
         if G and G.GAME and G.GAME.xmpl_weather_background then
             XMP_WEATHER_APPLY_BACKGROUND()
             return
@@ -290,7 +333,7 @@ if Game and Game.update then
         end
         if G and G.GAME and G.GAME.xmpl_daronne_bg_lock then
             XMP_DARONNE_APPLY_FEAST_BACKGROUND()
-        elseif G and G.GAME and G.GAME.xmpl_weather_background then
+        elseif G and G.GAME and (G.GAME.xmpl_weather_background or G.GAME.xmpl_temperature_tornado_active) then
             XMP_WEATHER_APPLY_BACKGROUND()
         end
         if XMP_WEATHER_REFRESH then

@@ -42,6 +42,16 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
                 }
             },
+            j_xmpl_fait_tarpin_chaud = {
+                name = 'Fait tarpin chaud',
+                text = {
+                    '{C:legendary}Legendary{} - cannot appear naturally',
+                    'Created by {C:attention}5 adjacent May{} Jokers',
+                    '{X:chips,C:white}X#6#{} {C:chips}Chips{}',
+                    'Gains {X:mult,C:white}X0.5{} {C:mult}Mult{} per second',
+                    '{X:mult,C:white}X#5#{} {C:mult}Mult{}'
+                }
+            },
             j_xmpl_derek = {
                 name = 'Derek',
                 text = {
@@ -129,6 +139,8 @@ return {
                     'Deck with litteral weather',
                     'Gives {C:attention}May{} at the start of the game',
                     'Weather can {C:green,E:2}behave strangely{} with this deck',
+                    'Self-destruct only triggers when May and Cold Carrefour',
+                    'are heavily unbalanced',
                 },
                 unlock = {
                     'Have had {C:attention}Perfect Middle{}',

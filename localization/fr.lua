@@ -42,6 +42,16 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Multi{} et {X:chips,C:white}X#6#{} {C:chips}Jetons{}'
                 }
             },
+            j_xmpl_fait_tarpin_chaud = {
+                name = 'Fait tarpin chaud',
+                text = {
+                    '{C:legendary}Legendaire{} - impossible a trouver naturellement',
+                    'Cree par {C:attention}5 May{} cote a cote',
+                    '{X:chips,C:white}X#6#{} {C:chips}Jetons{}',
+                    'Gagne {X:mult,C:white}X0.5{} {C:mult}Multi{} par seconde',
+                    '{X:mult,C:white}X#5#{} {C:mult}Multi{}'
+                }
+            },
             j_xmpl_derek = {
                 name = 'Derek',
                 text = {
@@ -130,6 +140,8 @@ return {
                     'Deck with litteral weather',
                     'Gives {C:attention}May{} at the start of the game',
                     'Weather can {C:green,E:2}behave strangely{} with this deck',
+                    'Autodestruction seulement si May et Cold Carrefour',
+                    'sont trop desequilibres',
                 },
                 unlock = {
                     'Avoir eu {C:attention}Perfect Middle{}',

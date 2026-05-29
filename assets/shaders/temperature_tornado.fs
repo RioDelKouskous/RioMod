@@ -22,10 +22,15 @@ vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
 
     vec4 base = Texel(texture, uv) * colour;
     float dust = smoothstep(0.15, 0.95, fract(sin(dot(screen_coords + time * 80.0, vec2(12.9898,78.233))) * 43758.5453));
+    float fog_a = smoothstep(0.24, 0.88, sin(screen_coords.x * 0.018 + screen_coords.y * 0.009 + time * 7.2) * 0.5 + 0.5);
+    float fog_b = smoothstep(0.20, 0.92, sin(screen_coords.x * -0.011 + screen_coords.y * 0.021 - time * 9.5) * 0.5 + 0.5);
+    float gust = smoothstep(0.06, 0.0, abs(fract(screen_coords.y * 0.012 + screen_coords.x * 0.004 - time * 3.4) - 0.5));
     float ring = smoothstep(0.06, 0.0, abs(dist - (0.18 + 0.08 * sin(time * 5.0)))) * strength;
-    vec3 storm = vec3(0.68, 0.74, 0.76) * (0.08 * funnel + 0.12 * dust * strength + 0.2 * ring);
+    float fog = (fog_a * 0.34 + fog_b * 0.32 + gust * 0.42 + dust * 0.18) * strength;
+    vec3 storm = vec3(0.70, 0.74, 0.75) * (0.14 * funnel + 0.24 * dust * strength + 0.32 * ring + fog);
 
-    base.rgb = mix(base.rgb, base.rgb * 0.78 + storm, 0.55 * strength);
-    base.rgb += vec3(0.04, 0.06, 0.07) * funnel;
+    base.rgb = mix(base.rgb, vec3(0.58, 0.60, 0.60), 0.34 * strength);
+    base.rgb = mix(base.rgb, base.rgb * 0.62 + storm, 0.78 * strength);
+    base.rgb += vec3(0.08, 0.09, 0.09) * funnel + vec3(0.12, 0.13, 0.13) * gust * strength;
     return base;
 }

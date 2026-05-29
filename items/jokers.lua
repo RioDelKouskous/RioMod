@@ -48,6 +48,12 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
+SMODS.Atlas{
+    key = 'fait_tarpin_chaud_atlas',
+    path = 'faittarpinchaud.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -73,6 +79,7 @@ local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
 local MAY_KEY = 'j_xmpl_may'
 local COLD_CARREFOUR_KEY = 'j_xmpl_cold_carrefour'
 local PERFECT_MIDDLE_KEY = 'j_xmpl_perfect_middle'
+local FAIT_TARPIN_CHAUD_KEY = 'j_xmpl_fait_tarpin_chaud'
 local HEAVIEST_DECK_KEY = 'b_xmpl_heaviest_deck'
 local TEMPERATURE_DECK_KEY = 'b_xmpl_temperature_deck'
 local CRYPTID_ABSOLUTE_STICKER = 'cry_absolute'
@@ -1029,13 +1036,14 @@ end
 ------------ WEATHER JOKER HELPERS -----------
 
 local function rio_weather_is_key(key)
-    return key == MAY_KEY or key == COLD_CARREFOUR_KEY or key == PERFECT_MIDDLE_KEY
+    return key == MAY_KEY or key == COLD_CARREFOUR_KEY or key == PERFECT_MIDDLE_KEY or key == FAIT_TARPIN_CHAUD_KEY
 end
 
 local function rio_weather_kind_from_key(key)
     if key == MAY_KEY then return 'may' end
     if key == COLD_CARREFOUR_KEY then return 'cold_carrefour' end
     if key == PERFECT_MIDDLE_KEY then return 'perfect_middle' end
+    if key == FAIT_TARPIN_CHAUD_KEY then return 'tarpin_chaud' end
 end
 
 local function rio_weather_center_key(card)
@@ -1062,8 +1070,8 @@ local function rio_weather_init_card(card, kind)
         rio_weather_ensure_settings(extra)
         return extra
     end
-    extra.Xmult = extra.Xmult or 2
-    extra.Xchips = extra.Xchips or 2
+    extra.Xmult = extra.Xmult or (kind == 'tarpin_chaud' and 1 or 2)
+    extra.Xchips = extra.Xchips or (kind == 'tarpin_chaud' and 0.9 or 2)
     if extra.elapsed == nil then
         extra.elapsed = rio_is_temperature_deck_run()
             and pseudorandom('temperature_deck_weather_timer_' .. tostring(card.sort_id or card.ID or math.random())) * WEATHER_DURATION * 0.85
@@ -1073,6 +1081,20 @@ local function rio_weather_init_card(card, kind)
     extra.weather_initialized = true
     rio_weather_ensure_settings(extra)
     return extra
+end
+
+local function rio_temperature_weather_is_unbalanced()
+    if not (G and G.jokers and G.jokers.cards) then return false end
+    local may_count, cold_count = 0, 0
+    for _, joker in ipairs(G.jokers.cards) do
+        if joker.added_to_deck and not joker.getting_sliced and not joker.destroyed then
+            local key = rio_weather_center_key(joker)
+            if key == MAY_KEY then may_count = may_count + 1 end
+            if key == COLD_CARREFOUR_KEY then cold_count = cold_count + 1 end
+        end
+    end
+    return (may_count >= 2 and may_count >= math.max(1, cold_count * 2))
+        or (cold_count >= 2 and cold_count >= math.max(1, may_count * 2))
 end
 
 local function rio_temperature_weather_sync_slots(exclude_card)
@@ -1122,6 +1144,7 @@ local function rio_temperature_weather_self_destruct(card)
         or not (card and card.added_to_deck and not card.getting_sliced and not card.destroyed) then
         return false
     end
+    if not rio_temperature_weather_is_unbalanced() then return false end
 
     local seed = 'temperature_deck_weather_self_destruct_' .. tostring(card.sort_id or card.ID or 'card') .. '_' .. tostring(G.GAME and G.GAME.hands_played or 0)
     if pseudorandom(seed) >= TEMPERATURE_DECK_SELF_DESTRUCT_CHANCE then return false end
@@ -1163,7 +1186,7 @@ local function rio_weather_apply_world(card)
     local kind = rio_weather_kind_from_key(rio_weather_center_key(card))
     local extra = rio_weather_init_card(card, kind)
     local settings = rio_weather_ensure_settings(extra)
-    local speed = kind == 'cold_carrefour' and 16 or kind == 'perfect_middle' and 8 or 4
+    local speed = kind == 'cold_carrefour' and 16 or kind == 'perfect_middle' and 8 or kind == 'tarpin_chaud' and 20 or 4
 
     if settings.music then G.GAME.xmpl_weather_music = kind end
     if settings.background then G.GAME.xmpl_weather_background = kind end
@@ -1233,7 +1256,48 @@ local function rio_weather_tick_card(card, dt)
         if rio_is_temperature_deck_run() and extra.elapsed >= TEMPERATURE_DECK_PERFECT_MIDDLE_DURATION then
             rio_weather_transform(card, MAY_KEY)
         end
+    elseif kind == 'tarpin_chaud' then
+        extra.Xmult = math.max((extra.Xmult or 1) + 0.5 * dt, WEATHER_MIN_X)
+        extra.Xchips = 0.9
     end
+end
+
+local function rio_weather_try_make_tarpin_chaud()
+    if not (G and G.jokers and G.jokers.cards and G.P_CENTERS and G.P_CENTERS[FAIT_TARPIN_CHAUD_KEY]) then return end
+    local streak = {}
+    for _, card in ipairs(G.jokers.cards) do
+        if card.added_to_deck and not card.getting_sliced and not card.destroyed and rio_weather_center_key(card) == MAY_KEY then
+            streak[#streak + 1] = card
+            if #streak >= 5 then break end
+        else
+            streak = {}
+        end
+    end
+    if #streak < 5 then return end
+
+    local first = streak[1]
+    local extra = rio_weather_init_card(first, 'may')
+    local merged_extra = {
+        Xmult = math.max(extra.Xmult or 1, 1),
+        Xchips = 0.9,
+        elapsed = 0,
+        weather_kind = 'tarpin_chaud',
+        weather_initialized = true,
+        settings = copy_table(extra.settings or WEATHER_DEFAULT_SETTINGS)
+    }
+    rio_weather_ensure_settings(merged_extra)
+
+    first:set_ability(G.P_CENTERS[FAIT_TARPIN_CHAUD_KEY], nil, true)
+    first.ability.extra = merged_extra
+    G.P_CENTERS[FAIT_TARPIN_CHAUD_KEY].discovered = true
+    first:juice_up(1.2, 1.2)
+
+    for index = 2, #streak do
+        streak[index].getting_sliced = true
+        SMODS.destroy_cards(streak[index], true)
+    end
+    rio_temperature_weather_sync_slots()
+    SMODS.previous_track = nil
 end
 
 local function rio_weather_try_fuse()
@@ -1297,6 +1361,7 @@ local rio_weather_refresh_hover_popup
 
 function XMP_WEATHER_REFRESH(dt)
     if not (G and G.GAME) then return end
+    rio_weather_try_make_tarpin_chaud()
     rio_weather_try_fuse()
     rio_temperature_weather_sync_slots()
     if G.jokers and G.jokers.cards then
@@ -1432,7 +1497,7 @@ end
 
 local function rio_weather_loc_vars(self, info_queue, card)
     local extra = card and rio_weather_get_extra(card) or self.config.extra
-    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
+    local weather_mult = rio_weather_center_key(card) ~= FAIT_TARPIN_CHAUD_KEY and rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
     return {vars = {
         0,
         0,
@@ -1445,7 +1510,7 @@ end
 
 local function rio_weather_score(card)
     local extra = rio_weather_get_extra(card)
-    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
+    local weather_mult = rio_weather_center_key(card) ~= FAIT_TARPIN_CHAUD_KEY and rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
     return {
         card = card,
         xmult = extra.Xmult * weather_mult,
@@ -1456,7 +1521,7 @@ end
 local function rio_weather_popup_token(card)
     local extra = card and rio_weather_get_extra(card)
     if not extra then return nil end
-    local weather_mult = rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
+    local weather_mult = rio_weather_center_key(card) ~= FAIT_TARPIN_CHAUD_KEY and rio_is_temperature_deck_run() and TEMPERATURE_DECK_WEATHER_MULT or 1
     return rio_format_num((extra.Xmult or 2) * weather_mult) .. '|' .. rio_format_num((extra.Xchips or 2) * weather_mult)
 end
 
@@ -1479,7 +1544,8 @@ end
 local WEATHER_CARD_SHADERS = {
     [MAY_KEY] = 'xmpl_weather_card_heat',
     [COLD_CARREFOUR_KEY] = 'xmpl_weather_card_cold',
-    [PERFECT_MIDDLE_KEY] = 'xmpl_weather_card_middle'
+    [PERFECT_MIDDLE_KEY] = 'xmpl_weather_card_middle',
+    [FAIT_TARPIN_CHAUD_KEY] = 'xmpl_weather_card_heat'
 }
 
 local function rio_weather_should_draw_card_shader(card)
@@ -1543,6 +1609,11 @@ G.FUNCS.j_xmpl_cold_carrefour_settings = function(e)
 end
 
 G.FUNCS.j_xmpl_perfect_middle_settings = function(e)
+    G.SETTINGS.paused = true
+    G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
+end
+
+G.FUNCS.j_xmpl_fait_tarpin_chaud_settings = function(e)
     G.SETTINGS.paused = true
     G.FUNCS.overlay_menu{definition = XMP_WEATHER_SETTINGS_UI(e.config.ref_table)}
 end
@@ -1657,6 +1728,43 @@ SMODS.Joker{
             local score = rio_weather_score(card)
             if not context.blueprint then rio_temperature_weather_self_destruct(card) end
             return score
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'fait_tarpin_chaud',
+    atlas = 'fait_tarpin_chaud_atlas',
+    rarity = 4,
+    cost = 24,
+    unlocked = true,
+    discovered = false,
+    blueprint_compat = true,
+    eternal_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { Xmult = 1, Xchips = 0.9, elapsed = 0, weather_kind = 'tarpin_chaud' } },
+    in_pool = function(self, args)
+        return false
+    end,
+    soulable = false,
+    loc_vars = rio_weather_loc_vars,
+    add_to_deck = function(self, card, from_debuff)
+        if G and G.P_CENTERS and G.P_CENTERS[FAIT_TARPIN_CHAUD_KEY] then
+            G.P_CENTERS[FAIT_TARPIN_CHAUD_KEY].discovered = true
+        end
+        rio_weather_init_card(card, 'tarpin_chaud')
+        rio_temperature_weather_sync_slots()
+        rio_weather_apply_world(card)
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        rio_temperature_weather_sync_slots(card)
+        if rio_weather_choose_active() == card then rio_weather_clear_world() end
+    end,
+    calculate = function(self, card, context)
+        rio_weather_init_card(card, 'tarpin_chaud')
+        rio_temperature_weather_try_tornado(context)
+        if context.joker_main then
+            return rio_weather_score(card)
         end
     end
 }
