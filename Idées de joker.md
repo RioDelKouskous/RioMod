@@ -125,7 +125,7 @@
 **Effets :**
 - Des que le joker s'active, une des voicelines du killer fish se lance (a mettre dans un folder assets quelque part, faut vrm just research "killer fish from san diego sur youtube)
 
-## Markiplier
+## Markiplie
 **Effets :**
 - Donne +87 chips OU a 1/4 chance de give +87 mult
 >>>>>>> 94cd453c5eea3bc888bd188b23d885d0224616ac
