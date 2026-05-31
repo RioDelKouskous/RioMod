@@ -4,7 +4,7 @@
 --- MOD_AUTHOR: [RioSkai, Suiveurtag]
 --- MOD_DESCRIPTION: Cool mod yeah yeah.
 --- PREFIX: xmpl
---- DEPENDENCIES: [Cryptid]
+--- DEPENDENCIES: []
 ----------------------------------------------
 ------------ ATLAS DEFINITIONS ---------------
 
