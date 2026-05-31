@@ -27,6 +27,20 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
                 }
             },
+            j_xmpl_true_markiplier = {
+                name = "The King of Five Nights At Freddy's",
+                text = {
+                    'Every played card {C:attention}transforms{} into {C:attention}Kings{}',
+                    'Every played {C:attention}King{} gives {X:mult,C:white}X#1#{} Mult'
+                }
+            },
+            j_xmpl_purple_guy = {
+                name = "Purple Guy",
+                text = {
+                    "If played hand is a {C:attention}High Card{},",
+                    "add a {C:purple}Purple Seal{} to the scored card"
+                }
+            },
             j_xmpl_cold_carrefour = {
                 name = 'Cold Carrefour',
                 text = {
@@ -90,6 +104,14 @@ return {
                     'Gives {C:chips}+#1#{} Chips, or a',
                     '{C:green}#3# in #4#{} chance to give',
                     '{C:mult}+#2#{} Mult instead'
+                }
+            },
+            j_xmpl_mariah_carey = {
+                name = 'Mariah Carey',
+                text = {
+                    'All I want for Christmas is... {C:attention}YOU!{}',
+                    '{C:inactive}Defrosting in {C:attention}#1#{} rounds{}',
+                    '{X:mult,C:white}X#2#{} Mult when defrosted'
                 }
             },
             j_xmpl_daronne_vexpi = {

@@ -27,6 +27,20 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Multi{} et {X:chips,C:white}X#6#{} {C:chips}Jetons{}'
                 }
             },
+            j_xmpl_true_markiplier = {
+                name = "The King of Five Nights At Freddy's",
+                text = {
+                    'Chaque carte jouée se {C:attention}transforme{} en {C:attention}Roi{}',
+                    'Chaque {C:attention}Roi{} joué donne {X:mult,C:white}X#1#{} Multi'
+                }
+            },
+            j_xmpl_purple_guy = {
+                name = "Purple Guy",
+                text = {
+                    "Si la main jouée est une {C:attention}Carte Haute{},",
+                    "ajoute un {C:purple}Sceau Violet{} à la carte scorée"
+                }
+            },
             j_xmpl_cold_carrefour = {
                 name = 'Cold Carrefour',
                 text = {
@@ -90,6 +104,14 @@ return {
                     'Donne {C:chips}+#1#{} Jetons, ou une',
                     'chance de {C:green}#3# sur #4#{} de donner',
                     '{C:mult}+#2#{} Multi à la place'
+                }
+            },
+            j_xmpl_mariah_carey = {
+                name = 'Mariah Carey',
+                text = {
+                    'Tout ce que je veux pour Noël c\'est... {C:attention}TOI !{}',
+                    '{C:inactive}Dégivre dans {C:attention}#1#{} manches{}',
+                    '{X:mult,C:white}X#2#{} Multi une fois dégivré'
                 }
             },
             j_xmpl_daronne_vexpi = {

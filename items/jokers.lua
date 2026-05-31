@@ -13,6 +13,18 @@ SMODS.Atlas{
 }
 
 SMODS.Atlas{
+    key = 'MarkiplierShocked_atlas',
+    path = 'MarkiplierShocked.png',
+    px = 71, py = 96
+}
+
+SMODS.Atlas{
+    key = 'PurpleGuy_atlas',
+    path = 'PurpleGuy.png',
+    px = 71, py = 96
+}
+
+SMODS.Atlas{
     key = 'dolby_atlas',
     path = 'dolby.png',
     px = 72, py = 96
@@ -60,6 +72,18 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
+SMODS.Atlas{
+    key = 'mariah_carey_atlas',
+    path = 'mariah_carey.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
+    key = 'ice_cube_atlas',
+    path = 'icecube.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -81,6 +105,7 @@ for _, key in ipairs(DARONNE_VEXPI_SOUND_KEYS) do
     DARONNE_VEXPI_SOUNDS[#DARONNE_VEXPI_SOUNDS + 1] = 'xmpl_' .. key
 end
 
+local MARIAH_CAREY_KEY = 'j_xmpl_mariah_carey'
 local DARONNE_VEXPI_KEY = 'j_xmpl_daronne_vexpi'
 local MAY_KEY = 'j_xmpl_may'
 local COLD_CARREFOUR_KEY = 'j_xmpl_cold_carrefour'
@@ -1626,6 +1651,38 @@ end
 
 ----------------------------------------------
 ------------ JOKER DEFINITIONS ---------------
+local function rio_fnaf_fusion(card, context)
+    if context.blueprint or not G.jokers or not G.jokers.cards then return end
+    local mark, purple
+    for _, j in ipairs(G.jokers.cards) do
+        if not j.getting_sliced and not j.destroyed then
+            if j.config.center.key == 'j_xmpl_markiplier' then mark = j end
+            if j.config.center.key == 'j_xmpl_purple_guy' then purple = j end
+        end
+    end
+
+    if mark and purple then
+        mark.getting_sliced = true
+        purple.getting_sliced = true
+        G.E_MANAGER:add_event(Event({
+            trigger = 'after',
+            delay = 0.3,
+            func = function()
+                play_sound('xmpl_purple_guy_fusion', 1.0, 0.8)
+                mark:juice_up(0.8, 0.5)
+                purple:juice_up(0.8, 0.5)
+                SMODS.destroy_cards({mark, purple})
+                
+                local new_joker = create_card('Joker', G.jokers, nil, nil, nil, nil, 'j_xmpl_true_markiplier')
+                new_joker:add_to_deck()
+                G.jokers:emplace(new_joker)
+                new_joker:juice_up(0.8, 0.5)
+                return true
+            end
+        }))
+        return true
+    end
+end
 
 SMODS.Joker{
     key = 'may',
@@ -1789,6 +1846,7 @@ SMODS.Joker{
         return {vars = {card.ability.extra.chips, card.ability.extra.mult, G.GAME.probabilities.normal, card.ability.extra.odds}}
     end,
     calculate = function(self, card, context)
+        if rio_fnaf_fusion(card, context) then return end
         if context.joker_main then
             if pseudorandom('markiplier') < G.GAME.probabilities.normal / card.ability.extra.odds then
                 return {
@@ -1799,6 +1857,83 @@ SMODS.Joker{
                 return {
                     chip_mod = card.ability.extra.chips,
                     message = localize{type = 'variable', key = 'a_chips', vars = {card.ability.extra.chips}}
+                }
+            end
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'true_markiplier',
+    atlas = 'MarkiplierShocked_atlas',
+    rarity = 4,
+    cost = 1987,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { Xmult = 1.987 } },
+    loc_vars = function(self, info_queue, center)
+        return {vars = {rio_format_num(center.ability.extra.Xmult)}}
+    end,
+    add_to_deck = function(self, card, from_debuff)
+        if G.GAME then
+            G.GAME.xmpl_fnaf_music_active = true
+            if G.SOUND_MANAGER and G.SOUND_MANAGER.channel then
+                G.SOUND_MANAGER.channel:push({type = 'stop'})
+            end
+        end
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        if G.GAME and not rio_fnaf_music_check(card) then
+            G.GAME.xmpl_fnaf_music_active = nil
+            if G.SOUND_MANAGER and G.SOUND_MANAGER.channel then
+                G.SOUND_MANAGER.channel:push({type = 'stop'})
+            end
+        end
+    end,
+    calculate = function(self, card, context)
+        if context.before and not context.blueprint then
+            for _, v in ipairs(context.full_hand) do
+                if v:get_id() ~= 13 then
+                    local suit_prefix = v.base.suit:sub(1,1):upper()
+                    v:set_base(G.P_CARDS[suit_prefix..'_K'])
+                end
+            end
+        end
+        if context.individual and context.cardarea == G.play then
+            if context.other_card:get_id() == 13 then
+                return {
+                    x_mult = card.ability.extra.Xmult,
+                    card = card
+                }
+            end
+        end
+    end,
+    calc_dollar_bonus = function(self, card)
+        return 4
+    end
+}
+
+SMODS.Joker{
+    key = 'purple_guy',
+    atlas = 'PurpleGuy_atlas',
+    rarity = 1,
+    cost = 4,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    calculate = function(self, card, context)
+        if rio_fnaf_fusion(card, context) then return end
+        if context.before and not context.blueprint and context.scoring_name == 'High Card' then
+            local target = context.scoring_hand[1]
+            if target and not target.seal then
+                target:set_seal('Purple', nil, true)
+                return {
+                    message = 'Purple Seal!',
+                    colour = G.C.PURPLE,
+                    card = card
                 }
             end
         end
@@ -2128,6 +2263,42 @@ SMODS.Joker{
     end
 }
 
+SMODS.Joker{
+    key = 'mariah_carey',
+    atlas = 'mariah_carey_atlas',
+    rarity = 2,
+    cost = 6,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { rounds_remaining = 3, xmult = 4 } },
+    loc_vars = function(self, info_queue, card)
+        local extra = card and card.ability.extra or self.config.extra
+        return {vars = {extra.rounds_remaining, extra.xmult}}
+    end,
+    calculate = function(self, card, context)
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
+            if card.ability.extra.rounds_remaining > 0 then
+                card.ability.extra.rounds_remaining = card.ability.extra.rounds_remaining - 1
+                if card.ability.extra.rounds_remaining == 0 then
+                    return {
+                        message = 'Defrosted!',
+                        colour = G.C.WHITE
+                    }
+                end
+            end
+        end
+        -- Buff becomes active when rounds_remaining hits 0
+        if context.joker_main and card.ability.extra.rounds_remaining <= 0 then
+            return {
+                message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
+                Xmult_mod = card.ability.extra.xmult
+            }
+        end
+    end
+}
+
 -- BigData Joker with 3D Relief Effect via shader
 SMODS.Joker{
     key = 'bigdata',
@@ -2304,3 +2475,28 @@ if CardArea and CardArea.emplace then
         return ret
     end
 end
+
+SMODS.DrawStep{
+    key = 'xmpl_mariah_ice_cube',
+    order = 10,
+    conditions = {vortex = false, facing = 'front'},
+    func = function(card)
+        if card.config.center.key == MARIAH_CAREY_KEY and card.ability and card.ability.extra and card.ability.extra.rounds_remaining and card.ability.extra.rounds_remaining > 0 and card.children and card.children.center then
+            local rounds = card.ability.extra.rounds_remaining
+            local opacity = 0
+            if rounds >= 3 then opacity = 1.0
+            elseif rounds == 2 then opacity = 0.65
+            elseif rounds == 1 then opacity = 0.35
+            end
+            
+            -- Check both possible atlas keys (xmpl_ or BalaRio_) to ensure it finds your icecube.png
+            local atlas = G.ASSET_ATLAS['xmpl_ice_cube_atlas'] or G.ASSET_ATLAS['BalaRio_ice_cube_atlas']
+            if opacity > 0 and atlas and atlas.quads and atlas.quads[1] and atlas.quads[1][1] then
+                love.graphics.setColor(1, 1, 1, opacity * G.shared_alpha)
+                -- We manually call 'soul' here. This shader handles the 3D relief, floating, and shimmer automatically!
+                card.children.center:draw_shader('soul', nil, nil, nil, card.children.center, atlas.quads[1][1], atlas.image)
+                love.graphics.setColor(1, 1, 1, G.shared_alpha)
+            end
+        end
+    end
+}

@@ -81,6 +81,25 @@ SMODS.Sound{
     end
 }
 
+SMODS.Sound{
+    key = 'music_fnaf_its_been_so_long',
+    path = 'ItsBeenSoLong.ogg',
+    sync = false,
+    pitch = 1,
+    volume = 0.8,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_fnaf_music_active and not G.GAME.xmpl_daronne_music_active then
+            return 1100000
+        end
+    end
+}
+
+SMODS.Sound{
+    key = 'purple_guy_fusion',
+    path = 'PurpleGuy.ogg',
+    volume = 0.9
+}
+
 SMODS.ScreenShader{
     key = 'weather_heat',
     path = 'weather_heat.fs',
