@@ -111,7 +111,14 @@ return {
                 text = {
                     'Tout ce que je veux pour Noël c\'est... {C:attention}TOI !{}',
                     '{C:inactive}Dégivre dans {C:attention}#1#{} manches{}',
-                    '{X:mult,C:white}X#2#{} Multi une fois dégivré'
+                    '{C:inactive}(Se transforme une fois prête){}'
+                }
+            },
+            j_xmpl_mariah_carey_unfrozen = {
+                name = 'Mariah Carey (Dégivrée)',
+                text = {
+                    'Elle est enfin là !',
+                    '{X:mult,C:white}X#1#{} Multi'
                 }
             },
             j_xmpl_daronne_vexpi = {

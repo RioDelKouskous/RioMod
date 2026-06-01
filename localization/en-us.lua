@@ -111,7 +111,14 @@ return {
                 text = {
                     'All I want for Christmas is... {C:attention}YOU!{}',
                     '{C:inactive}Defrosting in {C:attention}#1#{} rounds{}',
-                    '{X:mult,C:white}X#2#{} Mult when defrosted'
+                    '{C:inactive}(Transforms when ready){}'
+                }
+            },
+            j_xmpl_mariah_carey_unfrozen = {
+                name = 'Mariah Carey (Unfrozen)',
+                text = {
+                    'She has finally arrived!',
+                    '{X:mult,C:white}X#1#{} Mult'
                 }
             },
             j_xmpl_daronne_vexpi = {

@@ -30,6 +30,32 @@ SMODS.Sound{
 }
 
 SMODS.Sound{
+    key = 'music_mariah_muffled',
+    path = 'Christmas_Muffled.mp3',
+    sync = false,
+    pitch = 1,
+    volume = 0.7,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_mariah_frozen_active and not G.GAME.xmpl_daronne_music_active then
+            return 1200000
+        end
+    end
+}
+
+SMODS.Sound{
+    key = 'music_mariah_unfrozen',
+    path = 'Christmas.mp3',
+    sync = false,
+    pitch = 1,
+    volume = 0.7,
+    select_music_track = function()
+        if G and G.GAME and G.GAME.xmpl_mariah_unfrozen_active and not G.GAME.xmpl_daronne_music_active then
+            return 1300000
+        end
+    end
+}
+
+SMODS.Sound{
     key = 'music_may_lava',
     path = 'sm64lethallava.ogg',
     sync = false,
@@ -287,6 +313,28 @@ function XMP_WEATHER_APPLY_BACKGROUND()
         G.C.BACKGROUND.contrast = grey.contrast
         return
     end
+
+    -- Mariah Carey Christmas Background (Priority over standard weather)
+    if G.GAME.xmpl_mariah_unfrozen_active then
+        local timer = G and G.TIMERS and (G.TIMERS.REAL or G.TIMERS.TOTAL) or 0
+        -- Smoothly cycle between Red and Green every few seconds
+        local blend = 0.5 + 0.5 * math.sin(timer * 1.5)
+        local red = {L = HEX('D42426'), C = HEX('8B0000'), D = HEX('4B0000')}
+        local green = {L = HEX('2ED14F'), C = HEX('00A32A'), D = HEX('004D13')}
+        
+        for _, k in ipairs({'L', 'C', 'D'}) do
+            local target = G.C.BACKGROUND[k]
+            if target then
+                target[1] = red[k][1] * (1 - blend) + green[k][1] * blend
+                target[2] = red[k][2] * (1 - blend) + green[k][2] * blend
+                target[3] = red[k][3] * (1 - blend) + green[k][3] * blend
+                target[4] = 1
+            end
+        end
+        G.C.BACKGROUND.contrast = 2.4
+        return
+    end
+
     local cfg = WEATHER_BACKGROUNDS[G.GAME.xmpl_weather_background]
     if not cfg then return end
 
@@ -329,7 +377,7 @@ if ease_background_colour_blind then
             XMP_WEATHER_APPLY_BACKGROUND()
             return
         end
-        if G and G.GAME and G.GAME.xmpl_weather_background then
+        if G and G.GAME and (G.GAME.xmpl_weather_background or G.GAME.xmpl_mariah_unfrozen_active) then
             XMP_WEATHER_APPLY_BACKGROUND()
             return
         end
@@ -352,11 +400,14 @@ if Game and Game.update then
         end
         if G and G.GAME and G.GAME.xmpl_daronne_bg_lock then
             XMP_DARONNE_APPLY_FEAST_BACKGROUND()
-        elseif G and G.GAME and (G.GAME.xmpl_weather_background or G.GAME.xmpl_temperature_tornado_active) then
+        elseif G and G.GAME and (G.GAME.xmpl_weather_background or G.GAME.xmpl_temperature_tornado_active or G.GAME.xmpl_mariah_unfrozen_active) then
             XMP_WEATHER_APPLY_BACKGROUND()
         end
         if XMP_WEATHER_REFRESH then
             XMP_WEATHER_REFRESH(dt)
+        end
+        if XMP_MARIAH_REFRESH then
+            XMP_MARIAH_REFRESH(dt)
         end
         if XMP_TEMPERATURE_TORNADO_REFRESH then
             XMP_TEMPERATURE_TORNADO_REFRESH(dt)

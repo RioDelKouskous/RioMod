@@ -79,8 +79,8 @@ SMODS.Atlas{
 }
 
 SMODS.Atlas{
-    key = 'ice_cube_atlas',
-    path = 'icecube.png',
+    key = 'mariah_unfrozen_atlas',
+    path = 'UnfrozenMariah.png',
     px = 71, py = 95
 }
 
@@ -2271,26 +2271,53 @@ SMODS.Joker{
     unlocked = true,
     discovered = true,
     blueprint_compat = true,
+    shader = 'relief_3d',
+    soul_pos = { x = 0, y = 1 },
     pos = {x = 0, y = 0},
-    config = { extra = { rounds_remaining = 3, xmult = 4 } },
+    config = { extra = { rounds_remaining = 3 } },
     loc_vars = function(self, info_queue, card)
         local extra = card and card.ability.extra or self.config.extra
-        return {vars = {extra.rounds_remaining, extra.xmult}}
+        return {vars = {extra.rounds_remaining}}
     end,
     calculate = function(self, card, context)
         if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
             if card.ability.extra.rounds_remaining > 0 then
                 card.ability.extra.rounds_remaining = card.ability.extra.rounds_remaining - 1
                 if card.ability.extra.rounds_remaining == 0 then
+                    G.E_MANAGER:add_event(Event({
+                        func = function()
+                            play_sound('tarot1')
+                            card:set_ability(G.P_CENTERS['j_xmpl_mariah_carey_unfrozen'])
+                            card:juice_up(0.8, 0.5)
+                            return true
+                        end
+                    }))
                     return {
-                        message = 'Defrosted!',
+                        message = 'All I want for Christmas...',
                         colour = G.C.WHITE
                     }
                 end
             end
         end
-        -- Buff becomes active when rounds_remaining hits 0
-        if context.joker_main and card.ability.extra.rounds_remaining <= 0 then
+    end
+}
+
+SMODS.Joker{
+    key = 'mariah_carey_unfrozen',
+    atlas = 'mariah_unfrozen_atlas',
+    rarity = 3,
+    cost = 10,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { xmult = 3 } },
+    loc_vars = function(self, info_queue, card)
+        local extra = card and card.ability.extra or self.config.extra
+        return {vars = {extra.xmult}}
+    end,
+    calculate = function(self, card, context)
+        if context.joker_main then
             return {
                 message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
                 Xmult_mod = card.ability.extra.xmult
@@ -2476,27 +2503,26 @@ if CardArea and CardArea.emplace then
     end
 end
 
-SMODS.DrawStep{
-    key = 'xmpl_mariah_ice_cube',
-    order = 10,
-    conditions = {vortex = false, facing = 'front'},
-    func = function(card)
-        if card.config.center.key == MARIAH_CAREY_KEY and card.ability and card.ability.extra and card.ability.extra.rounds_remaining and card.ability.extra.rounds_remaining > 0 and card.children and card.children.center then
-            local rounds = card.ability.extra.rounds_remaining
-            local opacity = 0
-            if rounds >= 3 then opacity = 1.0
-            elseif rounds == 2 then opacity = 0.65
-            elseif rounds == 1 then opacity = 0.35
-            end
-            
-            -- Check both possible atlas keys (xmpl_ or BalaRio_) to ensure it finds your icecube.png
-            local atlas = G.ASSET_ATLAS['xmpl_ice_cube_atlas'] or G.ASSET_ATLAS['BalaRio_ice_cube_atlas']
-            if opacity > 0 and atlas and atlas.quads and atlas.quads[1] and atlas.quads[1][1] then
-                love.graphics.setColor(1, 1, 1, opacity * G.shared_alpha)
-                -- We manually call 'soul' here. This shader handles the 3D relief, floating, and shimmer automatically!
-                card.children.center:draw_shader('soul', nil, nil, nil, card.children.center, atlas.quads[1][1], atlas.image)
-                love.graphics.setColor(1, 1, 1, G.shared_alpha)
-            end
+local function rio_has_joker(key)
+    if not G.jokers or not G.jokers.cards then return false end
+    for _, j in ipairs(G.jokers.cards) do
+        if j.config and j.config.center and j.config.center.key == key and not j.getting_sliced and not j.destroyed then
+            return true
         end
     end
-}
+    return false
+end
+
+function XMP_MARIAH_REFRESH(dt)
+    if not (G and G.GAME) then return end
+    local frozen = rio_has_joker(MARIAH_CAREY_KEY)
+    local unfrozen = rio_has_joker('j_xmpl_mariah_carey_unfrozen')
+    
+    if frozen ~= G.GAME.xmpl_mariah_frozen_active or unfrozen ~= G.GAME.xmpl_mariah_unfrozen_active then
+        G.GAME.xmpl_mariah_frozen_active = frozen
+        G.GAME.xmpl_mariah_unfrozen_active = unfrozen
+        if G.SOUND_MANAGER and G.SOUND_MANAGER.channel then
+            G.SOUND_MANAGER.channel:push({type = 'stop'})
+        end
+    end
+end
