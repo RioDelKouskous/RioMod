@@ -64,6 +64,27 @@ return {
                     '{C:green}#2# chances sur #3#{} de se détruire'
                 }
             },
+            j_xmpl_balatro = {
+                name = 'Balatro',
+                text = {
+                    'Vous force à lancer {C:attention}Balatro{}'
+                }
+            },
+            j_xmpl_suki = {
+                name = 'Suki',
+                text = {
+                    'Prend {C:attention}2{} emplacements de Joker',
+                    '{C:green}#1# chance sur #2#{} de ramener un {C:attention}Bâton{}',
+                    '{C:green}#1# chance sur #3#{} d\'en manger un',
+                    '{C:inactive}(Chances actuelles: #1# sur #4#){}'
+                }
+            },
+            j_xmpl_stick = {
+                name = 'Bâton',
+                text = {
+                    '{C:mult}+#1#{} Multi'
+                }
+            },
             j_xmpl_perfect_middle = {
                 name = 'Perfect Middle',
                 text = {

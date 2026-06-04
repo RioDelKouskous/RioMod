@@ -64,6 +64,27 @@ return {
                     '{C:green}#2# in #3#{} chance to destroy self'
                 }
             },
+            j_xmpl_balatro = {
+                name = 'Balatro',
+                text = {
+                    'Forces you to launch {C:attention}Balatro{}'
+                }
+            },
+            j_xmpl_suki = {
+                name = 'Suki',
+                text = {
+                    'Takes {C:attention}2{} Joker slots',
+                    '{C:green}#1# in #2#{} chance to bring a {C:attention}Stick{} each round',
+                    '{C:green}#1# in #3#{} chance to eat a {C:attention}Stick{} each round',
+                    '{C:inactive}(Current fetch odds: #1# in #4#){}'
+                }
+            },
+            j_xmpl_stick = {
+                name = 'Stick',
+                text = {
+                    '{C:mult}+#1#{} Mult'
+                }
+            },
             j_xmpl_perfect_middle = {
                 name = 'Perfect Middle',
                 text = {

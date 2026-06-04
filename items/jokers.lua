@@ -96,6 +96,24 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
+SMODS.Atlas{
+    key = 'balatro_atlas',
+    path = 'balatro.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
+    key = 'suki_atlas',
+    path = 'Suki.png',
+    px = 125, py = 96
+}
+
+SMODS.Atlas{
+    key = 'stick_atlas',
+    path = 'Stick.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -2434,6 +2452,116 @@ SMODS.Joker{
                 message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
                 Xmult_mod = card.ability.extra.xmult
             }
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'balatro',
+    atlas = 'balatro_atlas',
+    rarity = 2,
+    cost = 4,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = false,
+    pos = {x = 0, y = 0},
+    calculate = function(self, card, context)
+        if context.joker_main then
+            -- Attempt to tell Steam to launch Balatro
+            love.system.openURL("steam://run/2379780")
+            -- Force a crash with the custom message
+            error("Forces you to launch balatro")
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'stick',
+    atlas = 'stick_atlas',
+    rarity = 1,
+    cost = 1,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { mult = 3 } },
+    loc_vars = function(self, info_queue, center)
+        return {vars = {center.ability.extra.mult}}
+    end,
+    calculate = function(self, card, context)
+        if context.joker_main then
+            return {
+                mult_mod = card.ability.extra.mult,
+                message = localize{type = 'variable', key = 'a_mult', vars = {card.ability.extra.mult}}
+            }
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'suki',
+    atlas = 'suki_atlas',
+    rarity = 3,
+    cost = 8,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = false,
+    pos = {x = 0, y = 0},
+    display_size = {w = 125, h = 96},
+    config = { extra = { eaten = 0, eat_odds = 5, base_fetch_odds = 3 } },
+    loc_vars = function(self, info_queue, center)
+        local current_fetch_denominator = math.max(1, center.ability.extra.base_fetch_odds - center.ability.extra.eaten)
+        return {vars = {G.GAME.probabilities.normal, center.ability.extra.base_fetch_odds, center.ability.extra.eat_odds, current_fetch_denominator}}
+    end,
+    add_to_deck = function(self, card, from_debuff)
+        if not from_debuff then
+            G.jokers.config.card_limit = G.jokers.config.card_limit - 1
+        end
+    end,
+    remove_from_deck = function(self, card, from_debuff)
+        if not from_debuff then
+            G.jokers.config.card_limit = G.jokers.config.card_limit + 1
+        end
+    end,
+    calculate = function(self, card, context)
+        if context.end_of_round and not context.blueprint and not context.repetition and not context.individual then
+            -- Logic for eating a stick
+            local sticks = {}
+            for _, j in ipairs(G.jokers.cards) do
+                if j.config.center.key == 'j_xmpl_stick' and not j.getting_sliced then
+                    sticks[#sticks+1] = j
+                end
+            end
+
+            if #sticks > 0 and pseudorandom('suki_eat') < G.GAME.probabilities.normal / card.ability.extra.eat_odds then
+                local stick_to_eat = pseudorandom_element(sticks, pseudoseed('suki_choice'))
+                stick_to_eat.getting_sliced = true
+                stick_to_eat:start_dissolve()
+                card.ability.extra.eaten = card.ability.extra.eaten + 1
+                return {
+                    message = "Nom!",
+                    colour = G.C.ORANGE
+                }
+            end
+
+            -- Logic for fetching a stick
+            local current_fetch_denominator = math.max(1, card.ability.extra.base_fetch_odds - card.ability.extra.eaten)
+            if pseudorandom('suki_fetch') < G.GAME.probabilities.normal / current_fetch_denominator then
+                -- Check if we have room (Negative sticks don't care about the limit, but we create it negative)
+                G.E_MANAGER:add_event(Event({
+                    func = function()
+                        local new_card = create_card('Joker', G.jokers, nil, nil, nil, nil, 'j_xmpl_stick')
+                        new_card:set_edition({negative = true}, true)
+                        new_card:add_to_deck()
+                        G.jokers:emplace(new_card)
+                        return true
+                    end
+                }))
+                return {
+                    message = "Good boy!",
+                    colour = G.C.GREEN
+                }
+            end
         end
     end
 }
