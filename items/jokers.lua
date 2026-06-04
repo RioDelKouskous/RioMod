@@ -84,6 +84,18 @@ SMODS.Atlas{
     px = 71, py = 95
 }
 
+SMODS.Atlas{
+    key = 'king_of_nothing_atlas',
+    path = 'KingOfNothing.png',
+    px = 71, py = 95
+}
+
+SMODS.Atlas{
+    key = 'shepherd_atlas',
+    path = 'shepherd.png',
+    px = 71, py = 95
+}
+
 local DARONNE_VEXPI_SOUND_KEYS = {
     'breakfart',
     'cartooneating',
@@ -2353,6 +2365,74 @@ SMODS.Joker{
                 message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
                 xmult_mod = card.ability.extra.xmult,
                 chip_mod = card.ability.extra.chip_gain
+            }
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'king_of_nothing',
+    atlas = 'king_of_nothing_atlas',
+    rarity = 2,
+    cost = 6,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { xmult = 4 } },
+    loc_vars = function(self, info_queue, center)
+        return {vars = {rio_format_num(center.ability.extra.xmult)}}
+    end,
+    calculate = function(self, card, context)
+        -- Trigger for each card scored in the played hand
+        if context.individual and context.cardarea == G.play then
+            -- Check if card is a King (ID 13) and has the Wild Card enhancement
+            if context.other_card:get_id() == 13 and context.other_card.ability.name == 'Wild Card' then
+                return {
+                    x_mult = card.ability.extra.xmult,
+                    card = card
+                }
+            end
+        end
+    end
+}
+
+SMODS.Joker{
+    key = 'shepherd',
+    atlas = 'shepherd_atlas',
+    rarity = 3,
+    cost = 10,
+    unlocked = true,
+    discovered = true,
+    blueprint_compat = true,
+    pos = {x = 0, y = 0},
+    config = { extra = { xmult = 40, odds = 8 } },
+    loc_vars = function(self, info_queue, center)
+        return {vars = {rio_format_num(center.ability.extra.xmult), G.GAME.probabilities.normal, center.ability.extra.odds}}
+    end,
+    calculate = function(self, card, context)
+        if context.joker_main then
+            -- Destroy the leftmost joker (including himself if he's the one)
+            G.E_MANAGER:add_event(Event({
+                func = function()
+                    local leftmost = G.jokers.cards[1]
+                    if leftmost then
+                        leftmost.getting_sliced = true
+                        leftmost:start_dissolve()
+                    end
+                    return true
+                end
+            }))
+
+            -- 1/8 chance to self-destruct (separate from the leftmost logic)
+            if pseudorandom('shepherd_self_destruct') < G.GAME.probabilities.normal / card.ability.extra.odds then
+                card.getting_sliced = true
+                card:start_dissolve()
+            end
+
+            return {
+                message = localize{type = 'variable', key = 'a_xmult', vars = {card.ability.extra.xmult}},
+                Xmult_mod = card.ability.extra.xmult
             }
         end
     end

@@ -49,6 +49,21 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Multi{} et {X:chips,C:white}X#6#{} {C:chips}Jetons{}'
                 }
             },
+            j_xmpl_king_of_nothing = {
+                name = 'Roi du Vide',
+                text = {
+                    'Chaque {C:attention}Roi Sauvage{} joué',
+                    'donne {X:mult,C:white}X#1#{} Multi'
+                }
+            },
+            j_xmpl_shepherd = {
+                name = 'Shepherd',
+                text = {
+                    'Donne {X:mult,C:white}X#1#{} Multi',
+                    '{C:red}Détruit{} le Joker le plus à gauche',
+                    '{C:green}#2# chances sur #3#{} de se détruire'
+                }
+            },
             j_xmpl_perfect_middle = {
                 name = 'Perfect Middle',
                 text = {
@@ -204,15 +219,15 @@ return {
             k_xmpl_self_destruct = 'Autodestruction !',
             k_xmpl_daronne_reroll = 'A table !',
             k_xmpl_daronne_ate = 'Repas fini !',
-            k_xmpl_daronne_more = 'I WANT MOOOORE',
+            k_xmpl_daronne_more = "J'AI BESOIN DE PLUS DE NOURRITURE !",
             k_xmpl_daronne_eternal = '+50$ !',
             k_xmpl_daronne_feast = 'GRAND FESTIN !',
-            k_xmpl_daronne_feast_line_1 = 'Finally, I can unleash my real power',
-            k_xmpl_daronne_feast_line_2 = "I'M HUNGRY MORE THAN EVER",
-            k_xmpl_daronne_feast_line_3 = "I'M GONNA EAT THE WHOLE DAMN UNIVERSE",
+            k_xmpl_daronne_feast_line_1 = 'Enfin, je vais libérer mon vrai potentiel !',
+            k_xmpl_daronne_feast_line_2 = "J'AI PLUS FAIM QUE JAMAIS !",
+            k_xmpl_daronne_feast_line_3 = "JE VAIS MANGER TOUT LE PUTAIN D'UNIVERS",
             k_xmpl_daronne_feast_line_4 = 'BEHOLD! THE POWER OF AN ANGEL',
             k_xmpl_weather_music = 'Musique',
-            k_xmpl_weather_speed = 'Vitesse forcee',
+            k_xmpl_weather_speed = 'Vitesse forceee',
             k_xmpl_weather_background = 'Background',
             k_xmpl_weather_shader = 'Shader / overlay'
         }

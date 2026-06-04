@@ -49,6 +49,21 @@ return {
                     '{X:mult,C:white}X#5#{} {C:mult}Mult{} and {X:chips,C:white}X#6#{} {C:chips}Chips{}'
                 }
             },
+            j_xmpl_king_of_nothing = {
+                name = 'King of Nothing',
+                text = {
+                    'Each played {C:attention}Wild King{}',
+                    'gives {X:mult,C:white}X#1#{} Mult'
+                }
+            },
+            j_xmpl_shepherd = {
+                name = 'Shepherd',
+                text = {
+                    'Gives {X:mult,C:white}X#1#{} Mult',
+                    '{C:red}Destroys{} leftmost Joker when used',
+                    '{C:green}#2# in #3#{} chance to destroy self'
+                }
+            },
             j_xmpl_perfect_middle = {
                 name = 'Perfect Middle',
                 text = {
